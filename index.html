@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="./styles.css"/>
+  <title>Steam Widget</title>
+  <script src="https://unpkg.com/@streamerbot/client/dist/streamerbot-client.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.12.0/js/md5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.5.0/gsap.min.js" crossorigin="anonymous"></script>
+</head>
+<body>
+  <main class="main-container">
+    <div id="steam-wrapper">
+      <div class="card" id="card">
+
+        <div class="standby-text" id="standbyText">
+          Listo para monitorear
+        </div>
+
+        <div class="widget-content" id="widgetContent">
+
+          <div class="gameinfo-container">
+
+
+              <div class="gameprogress">
+                <h2 id="gameName"></h2>
+                <div class="time-row">
+                  <svg class="clock-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path fill="currentColor" d="M12 2a10 10 0 1 0 .001 20.001A10 10 0 0 0 12 2Zm0 18a8 8 0 1 1 .001-16.001A8 8 0 0 1 12 20Zm.5-13h-2v6l5.25 3.15 1-1.65-4.25-2.5V7Z"/>
+                  </svg>
+                  <span class="time-text" id="timePlayed"></span>
+                </div>
+                <div class="achv-count" id="achvCount"></div>
+
+                <div class="progress">
+                  <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 16.7%;"></div>
+                    
+                  </div>
+                  <div class="progress-percent" id="progressPercent">0%</div>
+                </div>
+              </div>
+          </div>
+
+          
+          <div class="divider" aria-hidden="true"></div>
+
+          
+          <div class="trophy-container">
+            <p class="trophy-label">Últimos logros obtenidos</p>
+            <div id="trophyDisplay" class="trophyFade">
+              <div class="img-slot trophyimg-slot">
+                <img
+                  src=""
+                  class="trophyimg"
+                  alt=""
+                />
+              </div>
+
+              <p class="trophy-name" id="trophyName"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="./script.js"></script>
+  <!-- (Opcional) JS para setear porcentaje automáticamente -->
+  </body>
+</html>
