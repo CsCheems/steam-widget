@@ -16,7 +16,7 @@ let lastGame = "";
 let achievementIndex = 0;
 let achievementInterval = null;
 let sbConnect = false;
-const baseUrl = "http://localhost:3000";
+const baseUrl = "https://steam-backend-tw9u.onrender.com";
 
 const client = new StreamerbotClient({
   host: StreamerbotAdress,
