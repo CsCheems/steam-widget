@@ -4,6 +4,10 @@
   <meta charset="UTF-8" />
   <title>Tracker de Logros</title>
   <link rel="stylesheet" href="./styles.css" />
+
+  <script src="https://unpkg.com/@streamerbot/client/dist/streamerbot-client.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.12.0/js/md5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.5.0/gsap.min.js" crossorigin="anonymous"></script>
 </head>
 <body>
 
@@ -48,7 +52,29 @@
 
         </div>
         <div id="formMount" class="formGrid"></div>
+
+       
       </section>
+
+      <div id="import-container">
+        <h2>IMPORTAR A STREAMERBOT</h2>
+        <p class="import-hint">Haz clic en el bloque para copiar al portapapeles.</p>
+
+        <button
+          type="button"
+          id="import-copy"
+          class="copy-block"
+          aria-label="Copiar import string"
+          data-copy-text="U0JBRR+LCAAAAAAABADtV8lu2zAUvAfIP7g+h4FkUZbcW+ouyKFA0aS5FD08kk+OUIpUuWRBkH8vKS+xYrW3GClq+CLNPM5wGVB+D8dHo9G4QQfjt6OH+BJeFTQYXsef70cf7lpt3PhkxYB319pE7j1aMFpKENrMrxEbuym6QWNrrWJVepqcJhtCoOWmbt2K3FbVX7064ytGeSnXXFOruvHN1UYzkpF77CrGAnpTh07DBuT7j7XEL48e+xDXTQNKdOASGq0lOr5F09TOofhmg/H20D79yWjf9lQ6/sKzuFIWx570mKvzL3b8hPRUa9FtGS8LoKIieVFSQnPgpKymOSkELTgtGcUp2xbdnBYIcVmHx20OFTCJUbcCabHnprj0Io50xveYRndwso2tNiz6vBkyMrjAuxAWWfPazaF13uCQq9QcVqfc068XSht8p90Z59orNzCtZcm5cmgUyIECq73h3UGnzw7L1tbNoyyaoUmtKuJZ/6WKg8ULVLZ29c3g2hZSM5BzraXQtzsr9J36MLeIMYp7G/fVjPsUKHd530bHdI0/nryy0E5LlrCKhpQmFAgVZU4YTRiZpKLIK8Z4BjgY2hbCvrx8ZHdtDoH9rwObzTI6FZiQHLMQ2AQywtIJEoosnYW0srwSg4E1aNG9fGB3bQ6B/RcDOxC9pKRVMQs35CxkjdBJCmQGU0EKSnn4MZbR7E/R8/v4vg/4HMK3h/Alr/a2ZOF+TIocSTHJS0JZxcgsYUX4Y1pgkuYlFFgORtY6MHu4LXdtDoHd6225fNi0V7fIrOY/0V2guXkW1idyLmtUrk+6aLiEIrJq8p46ykm2RLDrS1F8NLpZN5rpcqK7LeOyDSUg22sIVcdHj78Bri6VXvcOAAA="
+        >
+          <span class="copy-block__label">IMPORT STRING</span>
+          <span class="copy-block__value">
+            U0JBRR+LCAAAAAAABADtV8lu2zAUvAfIP7g+h4FkUZbcW+ouyKFA0aS5FD08kk+OUIpUuWRBkH8vKS+xYrW3GClq+CLNPM5wGVB+D8dHo9G4QQfjt6OH+BJeFTQYXsef70cf7lpt3PhkxYB319pE7j1aMFpKENrMrxEbuym6QWNrrWJVepqcJhtCoOWmbt2K3FbVX7064ytGeSnXXFOruvHN1UYzkpF77CrGAnpTh07DBuT7j7XEL48e+xDXTQNKdOASGq0lOr5F09TOofhmg/H20D79yWjf9lQ6/sKzuFIWx570mKvzL3b8hPRUa9FtGS8LoKIieVFSQnPgpKymOSkELTgtGcUp2xbdnBYIcVmHx20OFTCJUbcCabHnprj0Io50xveYRndwso2tNiz6vBkyMrjAuxAWWfPazaF13uCQq9QcVqfc068XSht8p90Z59orNzCtZcm5cmgUyIECq73h3UGnzw7L1tbNoyyaoUmtKuJZ/6WKg8ULVLZ29c3g2hZSM5BzraXQtzsr9J36MLeIMYp7G/fVjPsUKHd530bHdI0/nryy0E5LlrCKhpQmFAgVZU4YTRiZpKLIK8Z4BjgY2hbCvrx8ZHdtDoH9rwObzTI6FZiQHLMQ2AQywtIJEoosnYW0srwSg4E1aNG9fGB3bQ6B/RcDOxC9pKRVMQs35CxkjdBJCmQGU0EKSnn4MZbR7E/R8/v4vg/4HMK3h/Alr/a2ZOF+TIocSTHJS0JZxcgsYUX4Y1pgkuYlFFgORtY6MHu4LXdtDoHd6225fNi0V7fIrOY/0V2guXkW1idyLmtUrk+6aLiEIrJq8p46ykm2RLDrS1F8NLpZN5rpcqK7LeOyDSUg22sIVcdHj78Bri6VXvcOAAA=
+          </span>
+
+          <span class="copy-block__toast" aria-hidden="true">Copiado</span>
+        </button>
+    </div>
 
     </main>
 

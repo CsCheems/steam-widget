@@ -279,3 +279,55 @@ async function init() {
 }
 
 document.addEventListener("DOMContentLoaded", init);
+
+// === COPIAR STRING DE STREAMERBOT 
+
+function copiarImportString() {
+  const btn = document.getElementById("import-copy");
+  if (!btn) return;
+
+  const text = btn.dataset.copyText || "";
+  if (!text) return;
+
+  // Método nuevo: Clipboard API con fallback
+  const doToast = () => {
+    const toast = btn.querySelector(".copy-block__toast");
+    if (!toast) return;
+
+    gsap.killTweensOf(toast);
+    gsap.set(toast, { opacity: 0, y: -6 });
+    gsap.to(toast, { opacity: 1, y: 0, duration: 0.18, ease: "power2.out" });
+    gsap.to(toast, { opacity: 0, y: -6, duration: 0.18, ease: "power2.in", delay: 1.1 });
+  };
+
+  const fallbackCopy = (value) => {
+    const ta = document.createElement("textarea");
+    ta.value = value;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand("copy");
+      doToast();
+    } finally {
+      document.body.removeChild(ta);
+    }
+  };
+
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text)
+      .then(doToast)
+      .catch(() => fallbackCopy(text));
+  } else {
+    fallbackCopy(text);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const btn = document.getElementById("import-copy");
+  if (!btn) return;
+  btn.addEventListener("click", copiarImportString);
+});
