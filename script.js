@@ -1,6 +1,7 @@
 const urlSearch = window.location.search;
 const params = new URLSearchParams(urlSearch);
 
+const numeroLogros = Number(params.get("mostrarNumeroLogros") || 3);
 const allowSb = obtenerBoolean("allowSb", "true");
 const StreamerbotAdress = params.get("sbAdress") || "127.0.0.1";
 const StreamerbotPort = params.get("sbPort") || "8080";
@@ -38,7 +39,7 @@ async function updateWidget() {
     return;
   }
 
-  const res = await fetch(`${baseUrl}/api/steam/achievements?steamid=${steamid}&steamkey=${steamkey}`);
+  const res = await fetch(`${baseUrl}/api/steam/achievements?steamid=${steamid}&steamkey=${steamkey}&numeroLogros=${numeroLogros}`);
   const data = await res.json();
 
   if (!data.active) {
