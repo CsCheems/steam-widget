@@ -33,6 +33,24 @@
             ]
         },
         {
+            "id": "widgetBehaviour",
+            "title": "Comportamiento",
+            "description": "Cantidad de logros en rotación",
+            "fields": [
+                {
+                    "type": "range",
+                    "id": "numeroLogros",
+                    "label": "Muestra el numero de logros en la rotación",
+                    "param": "numeroLogros",
+                    "default": 3,
+                    "min": 1,
+                    "max": 5,
+                    "step": 1,
+                    "suffix": ""
+                }
+            ]
+            },
+        {
         "title": "Streamerbot",
         "description": "Configuración de conexión con Streamerbot, esto permite a cambiar la categoria automaticamente en el momento que abras un juego en Steam.",
         "fields": [

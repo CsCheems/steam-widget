@@ -134,6 +134,9 @@ function renderField(field) {
   const row = document.createElement("div");
   row.className = "row";
 
+  const controlRow = document.createElement("div");
+  controlRow.className = "row";
+
   let input;
 
   // SWITCH
@@ -159,6 +162,32 @@ function renderField(field) {
     row.appendChild(line);
     wrap.appendChild(row);
     return wrap;
+  }
+
+  if (field.type === "range") {
+      const range = document.createElement("input");
+      range.type = "range";
+      range.className = "range";
+      range.min = field.min;
+      range.max = field.max;
+      range.step = field.step ?? 1;
+      range.value = state[field.id];
+
+      const valuePill = document.createElement("span");
+      valuePill.className = "pill";
+      valuePill.textContent = `${range.value}${field.suffix ?? ""}`;
+
+      range.addEventListener("input", () => {
+      state[field.id] = Number(range.value);
+      valuePill.textContent = `${range.value}${field.suffix ?? ""}`;
+      buildUrl();
+      refreshPreview();
+      });
+
+      controlRow.appendChild(range);
+      controlRow.appendChild(valuePill);
+      wrap.appendChild(controlRow);
+      return wrap;
   }
 
   if (field.description) {
