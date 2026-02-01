@@ -55,11 +55,12 @@ async function updateWidget() {
   if (!data.active) {
     card.style.setProperty("--card-bg-image", "none");
     document.getElementById("progressPercent").textContent = "";
-
+    toggleVisibility();
     widgetContent.classList.remove("show");
     setTimeout(() => {
       widgetContent.style.display = "none";
       standbyText.style.display = "block";
+      
       standbyText.textContent = data.message || "Listo para monitorear";
     }, 500);
 
@@ -185,7 +186,7 @@ async function cambiarCategoria(game){
   try{
     await client.doAction(
       {
-        name:"Cambiar Categoria"
+        name:"CambiarCategoria"
       },
       {
         game: juego
