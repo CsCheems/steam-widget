@@ -1,7 +1,11 @@
 const urlSearch = window.location.search;
 const params = new URLSearchParams(urlSearch);
 
-const numeroLogros = Number(params.get("numeroLogros") || 3);
+let numeroLogros = Number(params.get("numeroLogros") || 3);
+//Si el usuario coloca en el url un numero mayor al que se muestra en el menu, se usara el valor predeterminado de 3
+if(numeroLogros > 5 || numeroLogros <= 0){
+  numeroLogros = 3;
+}
 const allowSb = obtenerBoolean("allowSb", "true");
 const StreamerbotAdress = params.get("sbAdress") || "127.0.0.1";
 const StreamerbotPort = params.get("sbPort") || "8080";
@@ -151,6 +155,7 @@ function showAchievement(index) {
 }
 
 function startAchievementRotation() {
+  if(numeroLogros === 1) return;
   if (achievementInterval) clearInterval(achievementInterval);
   achievementIndex = 0;
   showAchievement(achievementIndex);
