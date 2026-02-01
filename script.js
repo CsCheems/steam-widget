@@ -94,7 +94,7 @@ async function updateWidget() {
   if (changed) {
     achievementQueue = newQueue;
 
-    if (achievementQueue.length > 0) {
+    if (achievementQueue.length > 1) {
       startAchievementRotation();
     } else {
       showAchievement(0);
@@ -155,7 +155,6 @@ function showAchievement(index) {
 }
 
 function startAchievementRotation() {
-  if(numeroLogros === 1) return;
   if (achievementInterval) clearInterval(achievementInterval);
   achievementIndex = 0;
   showAchievement(achievementIndex);
