@@ -388,3 +388,17 @@ p, span {
 .trophyFade.hidden {
   opacity: 0;
 }
+
+/* =========================
+   FADE ANIMATION
+========================= */
+
+.wrapperFade {
+  transition: opacity 0.6s ease;
+  opacity: 1;
+}
+
+.wrapperFade.hidden{
+  opacity: 0;
+}
+

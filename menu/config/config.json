@@ -47,6 +47,17 @@
                     "max": 5,
                     "step": 1,
                     "suffix": ""
+                },
+                {
+                    "type": "range",
+                    "id": "hideAfter",
+                    "label": "Ocultar despues de N segundos",
+                    "param": "hideAfter",
+                    "default": 10,
+                    "min": 1,
+                    "max": 30,
+                    "step": 1,
+                    "suffix": ""
                 }
             ]
             },

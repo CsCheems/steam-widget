@@ -9,13 +9,16 @@ if(numeroLogros > 5 || numeroLogros <= 0){
 const allowSb = obtenerBoolean("allowSb", "true");
 const StreamerbotAdress = params.get("sbAdress") || "127.0.0.1";
 const StreamerbotPort = params.get("sbPort") || "8080";
-const steamid = params.get("steam_id") || "";
-const steamkey = params.get("steam_web_key") || "";
+const steamid = params.get("steam_id") || window.ENV_STEAM_ID;
+const steamkey = params.get("steam_web_key") || window.ENV_STEAM_KEY;
+const hideAfter = Number(params.get("hideAfter") || 0);
 
 const standbyText = document.getElementById("standbyText");
 const widgetContent = document.getElementById("widgetContent");
 const card = document.getElementById("card");
+const wrapper = document.querySelector("wrapperFade");
 
+let itsVisible = false;
 let achievementQueue = [];
 let lastGame = "";
 let achievementIndex = 0;
@@ -45,6 +48,9 @@ async function updateWidget() {
 
   const res = await fetch(`${baseUrl}/api/steam/achievements?steamid=${steamid}&steamkey=${steamkey}&numeroLogros=${numeroLogros}`);
   const data = await res.json();
+
+  // console.debug("DATA:", data);
+  // console.debug("ULTIMOS LOGROS:", data.lastAchievements);
 
   if (!data.active) {
     card.style.setProperty("--card-bg-image", "none");
@@ -90,10 +96,11 @@ async function updateWidget() {
 
   const changed =
     JSON.stringify(newQueue) !== JSON.stringify(achievementQueue);
-
+  console.log(changed);
   if (changed) {
+   
     achievementQueue = newQueue;
-
+    toggleVisibility();
     if (achievementQueue.length > 1) {
       startAchievementRotation();
     } else {
@@ -104,6 +111,14 @@ async function updateWidget() {
 }
 
 let outer = document.getElementById("steam-wrapper");
+
+function toggleVisibility(){
+  if(hideAfter === 0) return;
+  outer.classList.remove("hidden");
+  setTimeout(() => {
+    outer.classList.add("hidden");
+  }, hideAfter * 1000);
+}
 
 function resize(){
   const maxWidth = outer.clientWidth + 50;
@@ -205,6 +220,6 @@ function obtenerBoolean(param, valor){
   }
 }
 
-setInterval(updateWidget, 10000);
+setInterval(updateWidget, 5000);
 updateWidget();
 
