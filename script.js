@@ -6,7 +6,7 @@ let numeroLogros = Number(params.get("numeroLogros") || 3);
 if(numeroLogros > 5 || numeroLogros <= 0){
   numeroLogros = 3;
 }
-const allowSb = obtenerBoolean("allowSb", "true");
+const allowSb = obtenerBoolean("allowSb", true);
 const StreamerbotAdress = params.get("sbAdress") || "127.0.0.1";
 const StreamerbotPort = params.get("sbPort") || "8080";
 const steamid = params.get("steam_id") || window.ENV_STEAM_ID;
@@ -55,7 +55,6 @@ async function updateWidget() {
   if (!data.active) {
     card.style.setProperty("--card-bg-image", "none");
     document.getElementById("progressPercent").textContent = "";
-    toggleVisibility();
     widgetContent.classList.remove("show");
     setTimeout(() => {
       widgetContent.style.display = "none";
@@ -181,12 +180,12 @@ function startAchievementRotation() {
 }
 
 async function cambiarCategoria(game){
-  if(!allowSb) return;
-  const juego = limpiarNombreJuego(game);
+  let juego = limpiarNombreJuego(game);
+  console.log("Titulo Limpio:", juego);
   try{
     await client.doAction(
       {
-        name:"CambiarCategoria"
+        name:"Cambiar Categoria"
       },
       {
         game: juego
