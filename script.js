@@ -1,14 +1,16 @@
+
+
 const urlSearch = window.location.search;
 const params = new URLSearchParams(urlSearch);
 
-let numeroLogros = Number(params.get("numeroLogros") || 3);
+let numeroLogros = Number(params.get("numeroLogros") || 1);
 //Si el usuario coloca en el url un numero mayor al que se muestra en el menu, se usara el valor predeterminado de 3
 if(numeroLogros > 5 || numeroLogros <= 0){
   numeroLogros = 3;
 }
 const allowSb = obtenerBoolean("allowSb", true);
-const StreamerbotAdress = params.get("sbAdress") || "127.0.0.1";
-const StreamerbotPort = params.get("sbPort") || "8080";
+const StreamerbotAdress = params.get("hostInput") || "127.0.0.1";
+const StreamerbotPort = params.get("portInput") || "8080";
 const steamid = params.get("steam_id") || window.ENV_STEAM_ID;
 const steamkey = params.get("steam_web_key") || window.ENV_STEAM_KEY;
 const hideAfter = Number(params.get("hideAfter") || 0);
