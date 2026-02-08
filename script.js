@@ -19,6 +19,13 @@ const standbyText = document.getElementById("standbyText");
 const widgetContent = document.getElementById("widgetContent");
 const card = document.getElementById("card");
 const wrapper = document.querySelector("wrapperFade");
+const trophyLabel = document.getElementById("trophylabel");
+
+const unlockOverlay = document.getElementById("unlockOverlay");
+const unlockContent = document.querySelector(".unlock-content");
+const unlockImage = document.getElementById("unlockImage");
+const unlockTitle = document.getElementById("unlockTitle");
+const unlockDesc = document.getElementById("unlockDesc");
 
 let itsVisible = false;
 let achievementQueue = [];
@@ -26,7 +33,11 @@ let lastGame = "";
 let achievementIndex = 0;
 let achievementInterval = null;
 let sbConnect = false;
+let unlockQueue = [];
+let unlockPlaying = false;
+let lastUnlockId = null;
 const baseUrl = "https://steam-backend-tw9u.onrender.com";
+const mockUrl = "http://localhost:3000"
 
 const client = new StreamerbotClient({
   host: StreamerbotAdress,
@@ -51,8 +62,18 @@ async function updateWidget() {
   const res = await fetch(`${baseUrl}/api/steam/achievements?steamid=${steamid}&steamkey=${steamkey}&numeroLogros=${numeroLogros}`);
   const data = await res.json();
 
-  // console.debug("DATA:", data);
-  // console.debug("ULTIMOS LOGROS:", data.lastAchievements);
+  console.debug("DATA:", data);
+  //console.debug("ULTIMOS LOGROS:", data.lastAchievements);
+
+  if (data.newAchievements?.length) {
+    for (const ach of data.newAchievements) {
+      if (ach.id !== lastUnlockId) {
+        unlockQueue.push(ach);
+        lastUnlockId = ach.id;
+      }
+    }
+    mostrarSiguiente();
+  }
 
   if (!data.active) {
     card.style.setProperty("--card-bg-image", "none");
@@ -100,12 +121,13 @@ async function updateWidget() {
     JSON.stringify(newQueue) !== JSON.stringify(achievementQueue);
   console.log(changed);
   if (changed) {
-   
     achievementQueue = newQueue;
     toggleVisibility();
     if (achievementQueue.length > 1) {
+      trophyLabel.textContent = `Últimos logros obtenidos`;
       startAchievementRotation();
     } else {
+      trophyLabel.textContent = "Último logro obtenido";
       showAchievement(0);
     }
   }
@@ -222,6 +244,198 @@ function obtenerBoolean(param, valor){
   }
 }
 
-setInterval(updateWidget, 5000);
+function mostrarLogro(achievement, onDone) {
+
+  widgetContent.classList.add("dimmed");
+
+  unlockContent.classList.add("hidden");
+
+  setTimeout(() => {
+
+    unlockImage.src = achievement.image;
+    unlockTitle.textContent = achievement.name;
+    unlockDesc.textContent = achievement.description;
+
+    unlockOverlay.classList.add("show");
+
+    requestAnimationFrame(() => {
+      unlockContent.classList.remove("hidden");
+    });
+
+  }, 400);
+
+  setTimeout(() => {
+
+    unlockContent.classList.add("hidden");
+
+    setTimeout(() => {
+
+      if (typeof onDone === "function") {
+        onDone();
+      }
+
+      if (unlockQueue.length === 0) {
+        unlockOverlay.classList.remove("show");
+        widgetContent.classList.remove("dimmed");
+      }
+
+    }, 400);
+
+  }, 8000);
+}
+
+
+
+
+function mostrarSiguiente() {
+  if (unlockPlaying) return;
+  if (unlockQueue.length === 0) return;
+
+  unlockPlaying = true;
+
+  const ach = unlockQueue.shift();
+  mostrarLogro(ach, () => {
+    unlockPlaying = false;
+    mostrarSiguiente();
+  });
+}
+
+
+setInterval(updateWidget, 10000);
 updateWidget();
 
+
+/* =========================
+   MOCK STEAM API (DEV ONLY)
+========================= */
+
+
+const USE_MOCK = false;
+
+
+const mockResponses = [
+  {
+    active: true,
+    game: {
+      name: "Halo: The Master Chief Collection",
+      image: "https://cdn.cloudflare.steamstatic.com/steam/apps/976730/header.jpg",
+      timePlayed: "375.2 hrs"
+    },
+    progress: {
+      desbloqueado: 162,
+      total: 700,
+      percentage: 23
+    },
+    lastAchievements: [],
+    newAchievements: []
+  },
+  // {
+  //   active: true,
+  //   game: {
+  //     name: "Halo: The Master Chief Collection",
+  //     image: "https://cdn.cloudflare.steamstatic.com/steam/apps/976730/header.jpg",
+  //     timePlayed: "375.3 hrs"
+  //   },
+  //   progress: {
+  //     desbloqueado: 163,
+  //     total: 700,
+  //     percentage: 23
+  //   },
+  //   lastAchievements: [],
+  //   newAchievements: [
+  //     {
+  //       id: "Autopista de la costa",
+  //       name: "Autopista de la costa",
+  //       image: "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/976730/f9c235fb5c6bb7a19a816ad7aa2b978933682217.jpg",
+  //       description: "H3: ODST: completaste Autopista de la costa.",
+  //       achieved: true,
+  //       unlocktime: Date.now()
+  //     }
+  //   ]
+  // },
+  {
+    active: true,
+    game: {
+      name: "Halo: The Master Chief Collection",
+      image: "https://cdn.cloudflare.steamstatic.com/steam/apps/976730/header.jpg",
+      timePlayed: "375.4 hrs"
+    },
+    progress: {
+      desbloqueado: 165,
+      total: 700,
+      percentage: 24
+    },
+    lastAchievements: [],
+    newAchievements: [
+      {
+        id: "Autopista de la costa",
+        name: "Autopista de la costa",
+        image: "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/976730/f9c235fb5c6bb7a19a816ad7aa2b978933682217.jpg",
+        description: "H3: ODST: completaste Autopista de la costa.",
+        achieved: true,
+        unlocktime: Date.now()
+      },
+      {
+        id: "Déjà Vu",
+        name: "Déjà Vu",
+        image: "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/976730/d97ee378cac6c6045e2ba998721951299028093c.jpg",
+        description: "ODST en legendario con Hierro.",
+        achieved: true,
+        unlocktime: Date.now()
+      },
+      {
+        id: "Volver",
+        name: "Volver",
+        image: "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/976730/f1fa005a6b9d12a8d65e30d8b94260a4dfcc1c84.jpg",
+        description: "Halo 3 completado.",
+        achieved: true,
+        unlocktime: Date.now()
+      }
+    ]
+  },
+  {
+    active: true,
+    game: {
+      name: "Halo: The Master Chief Collection",
+      image: "https://cdn.cloudflare.steamstatic.com/steam/apps/976730/header.jpg",
+      timePlayed: "375.4 hrs"
+    },
+    progress: {
+      desbloqueado: 165,
+      total: 700,
+      percentage: 24
+    },
+    lastAchievements: [],
+    newAchievements: [
+      {
+        id: "Volver",
+        name: "Volver",
+        image: "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/976730/f1fa005a6b9d12a8d65e30d8b94260a4dfcc1c84.jpg",
+        description: "Halo 3 completado.",
+        achieved: true,
+        unlocktime: Date.now()
+      }
+    ]
+  }
+];
+
+let mockIndex = 0;
+
+if (USE_MOCK) {
+  const originalFetch = window.fetch;
+
+  window.fetch = async (...args) => {
+    console.warn(args[0]);
+
+    const data =
+      mockResponses[mockIndex] ||
+      mockResponses[mockResponses.length - 1];
+
+    mockIndex++;
+
+    return {
+      ok: true,
+      json: async () => structuredClone(data)
+    };
+  };
+}

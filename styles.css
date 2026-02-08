@@ -175,6 +175,58 @@ p, span {
 }
 
 /* =========================
+   UNLOCK OVERLAY
+========================= */
+
+.unlock-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: linear-gradient(
+    135deg,
+    rgba(15, 23, 42, 0.9),
+    rgba(2, 6, 23, 0.9)
+  );
+
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease-in-out;
+}
+
+.unlock-overlay.show {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.unlock-content {
+  text-align: center;
+  max-width: 80%;
+}
+
+.unlock-content img {
+  width: 96px;
+  height: 96px;
+  border-radius: var(--radius-lg);
+  margin-bottom: 12px;
+  box-shadow: var(--shadow-img);
+}
+
+.unlock-content h2 {
+  font-size: 1.8em;
+  margin-bottom: 6px;
+}
+
+.unlock-content p {
+  font-size: 1.2em;
+  color: var(--text-soft);
+}
+
+/* =========================
    GAME SECTION (FIXED BLOCK)
 ========================= */
 
@@ -373,7 +425,7 @@ p, span {
   overflow: hidden;
   text-overflow: ellipsis;
 
-  min-height: 2.2em; /* ✅ espacio fijo */
+  min-height: 2.2em; 
 }
 
 /* =========================
@@ -402,3 +454,28 @@ p, span {
   opacity: 0;
 }
 
+.widget-content.dimmed {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.98);
+}
+
+
+/* =========================
+   UNLOCK CONTENT FADE
+========================= */
+
+.unlock-overlay.show ~ .widget-content {
+  filter: blur(1px) brightness(0.8);
+}
+
+.unlock-content {
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  opacity: 1;
+  transform: scale(1);
+}
+
+.unlock-content.hidden {
+  opacity: 0;
+  transform: scale(0.96);
+}
