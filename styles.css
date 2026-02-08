@@ -86,7 +86,7 @@ p, span {
 
 .card {
   width: 700px;
-  height: 220px; /* ✅ CARD FIJO */
+  height: 220px;
   display: flex;
   align-items: center;
   gap: 24px;
@@ -187,11 +187,7 @@ p, span {
   align-items: center;
   justify-content: center;
 
-  background: linear-gradient(
-    135deg,
-    rgba(15, 23, 42, 0.9),
-    rgba(2, 6, 23, 0.9)
-  );
+  background: transparent;
 
   opacity: 0;
   pointer-events: none;

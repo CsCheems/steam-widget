@@ -1,9 +1,12 @@
 
+/* =========================
+   URL PARAMS
+========================= */
 
 const urlSearch = window.location.search;
 const params = new URLSearchParams(urlSearch);
 
-let numeroLogros = Number(params.get("numeroLogros") || 1);
+let numeroLogros = Number(params.get("numeroLogros") || 2);
 //Si el usuario coloca en el url un numero mayor al que se muestra en el menu, se usara el valor predeterminado de 3
 if(numeroLogros > 5 || numeroLogros <= 0){
   numeroLogros = 3;
@@ -15,10 +18,14 @@ const steamid = params.get("steam_id") || window.ENV_STEAM_ID;
 const steamkey = params.get("steam_web_key") || window.ENV_STEAM_KEY;
 const hideAfter = Number(params.get("hideAfter") || 0);
 
+/* =========================
+   DOM ELEMENTS
+========================= */
+
 const standbyText = document.getElementById("standbyText");
 const widgetContent = document.getElementById("widgetContent");
 const card = document.getElementById("card");
-const wrapper = document.querySelector("wrapperFade");
+const wrapper = document.querySelector(".wrapperFade");
 const trophyLabel = document.getElementById("trophylabel");
 
 const unlockOverlay = document.getElementById("unlockOverlay");
@@ -26,6 +33,12 @@ const unlockContent = document.querySelector(".unlock-content");
 const unlockImage = document.getElementById("unlockImage");
 const unlockTitle = document.getElementById("unlockTitle");
 const unlockDesc = document.getElementById("unlockDesc");
+
+let outer = document.getElementById("steam-wrapper");
+
+/* =========================
+   STATE VARIABLES
+========================= */
 
 let itsVisible = false;
 let achievementQueue = [];
@@ -36,8 +49,37 @@ let sbConnect = false;
 let unlockQueue = [];
 let unlockPlaying = false;
 let lastUnlockId = null;
+
 const baseUrl = "https://steam-backend-tw9u.onrender.com";
 const mockUrl = "http://localhost:3000"
+
+/* =========================
+   GLOBAL STATE
+========================= */
+
+const state = {
+  active: null,
+  gameName: "",
+  gameImage: "",
+  progressPct: null,
+  lastAchievementsIds: []
+};
+
+function extractIds(list = []) {
+  return list.map(a => a.id ?? `${a.name}|${a.image}`);
+}
+
+function arraysEqual(a = [], b = []) {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
+/* =========================
+   STREAMERBOT CLIENT
+========================= */
 
 const client = new StreamerbotClient({
   host: StreamerbotAdress,
@@ -46,11 +88,14 @@ const client = new StreamerbotClient({
     sbConnect = true;
     console.log(data);
   },
-  onDisconnect: (data) =>{
+  onDisconnect: () =>{
     sbConnect = false;
-    console.log("Desconectado: ", data);
   }
 })
+
+/* =========================
+   UPDATE WIDGET
+========================= */
 
 async function updateWidget() {
 
@@ -65,6 +110,74 @@ async function updateWidget() {
   console.debug("DATA:", data);
   //console.debug("ULTIMOS LOGROS:", data.lastAchievements);
 
+  /* =========================
+     ACTIVE / IDLE STATE
+  ========================= */
+
+  if (!data.active) {
+    if (state.active !== false) {
+      state.active = false;
+
+      card.style.setProperty("--card-bg-image", "none");
+      widgetContent.classList.remove("show");
+
+      setTimeout(() => {
+        widgetContent.style.display = "none";
+        standbyText.style.display = "block";
+        standbyText.textContent = data.message || "Listo para monitorear";
+      }, 500);
+    }
+    return;
+  }
+
+  if (state.active !== true) {
+    state.active = true;
+    standbyText.style.display = "none";
+    widgetContent.style.display = "flex";
+    requestAnimationFrame(() => widgetContent.classList.add("show"));
+  }
+
+  /* =========================
+  GAME DATA
+  ========================= */
+
+  if (data.game.image !== state.gameImage) {
+    state.gameImage = data.game.image;
+    card.style.setProperty("--card-bg-image", `url("${state.gameImage}")`);
+  }
+
+  if (data.game.name !== state.gameName) {
+    state.gameName = data.game.name;
+    document.getElementById("gameName").textContent = state.gameName;
+
+    if (allowSb) {
+      cambiarCategoria(state.gameName);
+    }
+  }
+
+  document.getElementById("timePlayed").textContent = data.game.timePlayed;
+
+  /* =========================
+     PROGRESS
+  ========================= */
+
+  if (data.progress.percentage !== state.progressPct) {
+    state.progressPct = data.progress.percentage;
+
+    document.getElementById("achvCount").textContent =
+      `${data.progress.desbloqueado}/${data.progress.total}`;
+
+    document.getElementById("progressFill").style.width =
+      `${data.progress.percentage}%`;
+
+    document.getElementById("progressPercent").textContent =
+      `${data.progress.percentage}%`;
+  }
+
+   /* =========================
+     UNLOCK QUEUE
+  ========================= */
+
   if (data.newAchievements?.length) {
     for (const ach of data.newAchievements) {
       if (ach.id !== lastUnlockId) {
@@ -75,224 +188,171 @@ async function updateWidget() {
     mostrarSiguiente();
   }
 
-  if (!data.active) {
-    card.style.setProperty("--card-bg-image", "none");
-    document.getElementById("progressPercent").textContent = "";
-    widgetContent.classList.remove("show");
-    setTimeout(() => {
-      widgetContent.style.display = "none";
-      standbyText.style.display = "block";
-      
-      standbyText.textContent = data.message || "Listo para monitorear";
-    }, 500);
-
-    return;
-  }
-
-  card.style.setProperty("--card-bg-image", `url("${data.game.image}")`);
-
-  standbyText.style.display = "none";
-  widgetContent.style.display = "flex";
-  requestAnimationFrame(() => widgetContent.classList.add("show"));
-
-  document.getElementById("gameName").textContent = data.game.name;
-
-  if(data.game.name !== lastGame){
-    lastGame = data.game.name;
-    if(allowSb){
-      cambiarCategoria(lastGame);
-    }
-  }
-  
-  document.getElementById("timePlayed").textContent = data.game.timePlayed;
-
-  document.getElementById("achvCount").textContent =
-    `${data.progress.desbloqueado}/${data.progress.total}`;
-
-  document.getElementById("progressFill").style.width =
-    `${data.progress.percentage}%`;
-
-  document.getElementById("progressPercent").textContent =
-    `${data.progress.percentage}%`;
+  /* =========================
+     LAST ACHIEVEMENTS ROTATION
+  ========================= */
 
   const newQueue = data.lastAchievements || [];
+  const newIds = extractIds(newQueue);
 
-  const changed =
-    JSON.stringify(newQueue) !== JSON.stringify(achievementQueue);
-  console.log(changed);
+  const changed = !arraysEqual(newIds, state.lastAchievementsIds);
+
   if (changed) {
+    state.lastAchievementsIds = newIds;
     achievementQueue = newQueue;
+
     toggleVisibility();
+
     if (achievementQueue.length > 1) {
-      trophyLabel.textContent = `Últimos logros obtenidos`;
+      trophyLabel.textContent = "Últimos logros obtenidos";
       startAchievementRotation();
     } else {
       trophyLabel.textContent = "Último logro obtenido";
+      stopAchievementRotation();
       showAchievement(0);
     }
   }
 
 }
 
-let outer = document.getElementById("steam-wrapper");
+/* =========================
+   VISIBILITY
+========================= */
 
-function toggleVisibility(){
-  if(hideAfter === 0) return;
+function toggleVisibility() {
+  if (hideAfter === 0) return;
   outer.classList.remove("hidden");
   setTimeout(() => {
     outer.classList.add("hidden");
   }, hideAfter * 1000);
 }
 
-function resize(){
+/* =========================
+   RESIZE
+========================= */
+
+function resize() {
   const maxWidth = outer.clientWidth + 50;
   const maxHeight = window.innerHeight + 50;
-  
+
   const scaleW = window.innerHeight / maxWidth;
   const scaleH = window.innerHeight / maxHeight;
 
-  const maxScale = 2.0;
-
-  const scale = Math.min(scaleW, scaleH, maxScale);
-
+  const scale = Math.min(scaleW, scaleH, 2.0);
   outer.style.transformOrigin = "center";
   outer.style.transform = `scale(${scale})`;
 }
 
 window.addEventListener("resize", resize);
+window.onload = resize;
 
-window.onload = () => {
-  resize();
-}
+/* =========================
+   ACHIEVEMENTS
+========================= */
 
 function showAchievement(index) {
-
   const display = document.getElementById("trophyDisplay");
 
   if (!achievementQueue.length) {
-    document.getElementById("trophyName").textContent =
-      "Sin logros recientes";
-
+    document.getElementById("trophyName").textContent = "Sin logros recientes";
     document.querySelector(".trophyimg").style.display = "none";
     return;
   }
 
   const ach = achievementQueue[index];
-
   display.classList.add("hidden");
 
   setTimeout(() => {
-
     document.getElementById("trophyName").textContent = ach.name;
-
     const trophyImg = document.querySelector(".trophyimg");
     trophyImg.src = ach.image;
     trophyImg.style.display = ach.image ? "block" : "none";
     display.classList.remove("hidden");
-
   }, 600);
 }
 
 function startAchievementRotation() {
-  if (achievementInterval) clearInterval(achievementInterval);
+  stopAchievementRotation(); // 🔥 evita duplicar intervals
   achievementIndex = 0;
   showAchievement(achievementIndex);
   achievementInterval = setInterval(() => {
     achievementIndex = (achievementIndex + 1) % achievementQueue.length;
     showAchievement(achievementIndex);
-  }, 10000); 
+  }, 10000);
 }
 
-async function cambiarCategoria(game){
+function stopAchievementRotation() {
+  if (achievementInterval) {
+    clearInterval(achievementInterval);
+    achievementInterval = null;
+  }
+}
+
+/* =========================
+   STREAMERBOT
+========================= */
+
+async function cambiarCategoria(game) {
   let juego = limpiarNombreJuego(game);
-  console.log("Titulo Limpio:", juego);
-  try{
-    await client.doAction(
-      {
-        name:"Cambiar Categoria"
-      },
-      {
-        game: juego
-      }
-    );
-  }catch(err){
-    console.error("Error enviando accion a Streamerbot", err);
+  try {
+    await client.doAction({ name: "Cambiar Categoria" }, { game: juego });
+  } catch (err) {
+    console.error("Error Streamerbot:", err);
   }
 }
 
 function limpiarNombreJuego(nombre) {
   return nombre
-    .normalize("NFD")                
-    .replace(/[\u0300-\u036f]/g, "") 
-    .replace(/[^a-zA-Z0-9 :']/g, "") 
-    .replace(/\s+/g, " ")            
-    .trim();                         
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9 :']/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-function obtenerBoolean(param, valor){
-  const urlParam = new URLSearchParams(window.location.search);
-  if(urlParam === null) return;
 
-  const valorParam = urlParam.get(param);
+/* =========================
+   HELPERS
+========================= */
 
-  if(valorParam === "true"){
-    return true;
-  }else if(valorParam === "false"){
-    return false;
-  }else{
-    return valor;
-  }
+function obtenerBoolean(param, valor) {
+  const valorParam = new URLSearchParams(window.location.search).get(param);
+  if (valorParam === "true") return true;
+  if (valorParam === "false") return false;
+  return valor;
 }
+
+/* =========================
+   UNLOCK OVERLAY
+========================= */
 
 function mostrarLogro(achievement, onDone) {
-
   widgetContent.classList.add("dimmed");
-
   unlockContent.classList.add("hidden");
 
   setTimeout(() => {
-
     unlockImage.src = achievement.image;
     unlockTitle.textContent = achievement.name;
     unlockDesc.textContent = achievement.description;
-
     unlockOverlay.classList.add("show");
-
-    requestAnimationFrame(() => {
-      unlockContent.classList.remove("hidden");
-    });
-
+    requestAnimationFrame(() => unlockContent.classList.remove("hidden"));
   }, 400);
 
   setTimeout(() => {
-
     unlockContent.classList.add("hidden");
-
     setTimeout(() => {
-
-      if (typeof onDone === "function") {
-        onDone();
-      }
-
+      if (typeof onDone === "function") onDone();
       if (unlockQueue.length === 0) {
         unlockOverlay.classList.remove("show");
         widgetContent.classList.remove("dimmed");
       }
-
     }, 400);
-
   }, 8000);
 }
 
-
-
-
 function mostrarSiguiente() {
-  if (unlockPlaying) return;
-  if (unlockQueue.length === 0) return;
-
+  if (unlockPlaying || unlockQueue.length === 0) return;
   unlockPlaying = true;
-
   const ach = unlockQueue.shift();
   mostrarLogro(ach, () => {
     unlockPlaying = false;
@@ -300,10 +360,12 @@ function mostrarSiguiente() {
   });
 }
 
+/* =========================
+   INTERVAL
+========================= */
 
 setInterval(updateWidget, 10000);
 updateWidget();
-
 
 /* =========================
    MOCK STEAM API (DEV ONLY)
