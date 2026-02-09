@@ -326,7 +326,7 @@ function obtenerBoolean(param, valor) {
    UNLOCK OVERLAY
 ========================= */
 
-function mostrarLogro(achievement, onDone) {
+function mostrarLogro(achievement, isLast, onDone) {
   widgetContent.classList.add("dimmed");
   unlockContent.classList.add("hidden");
 
@@ -342,7 +342,7 @@ function mostrarLogro(achievement, onDone) {
     unlockContent.classList.add("hidden");
     setTimeout(() => {
       if (typeof onDone === "function") onDone();
-      if (unlockQueue.length === 0) {
+     if (isLast) {
         unlockOverlay.classList.remove("show");
         widgetContent.classList.remove("dimmed");
       }
@@ -353,8 +353,11 @@ function mostrarLogro(achievement, onDone) {
 function mostrarSiguiente() {
   if (unlockPlaying || unlockQueue.length === 0) return;
   unlockPlaying = true;
+
+  const isLast = unlockQueue.length === 1;
+
   const ach = unlockQueue.shift();
-  mostrarLogro(ach, () => {
+  mostrarLogro(ach, isLast, () => {
     unlockPlaying = false;
     mostrarSiguiente();
   });
@@ -368,7 +371,7 @@ setInterval(updateWidget, 10000);
 updateWidget();
 
 /* =========================
-   MOCK STEAM API (DEV ONLY)
+   MOCK STEAM API (TESTEO)
 ========================= */
 
 
@@ -391,30 +394,6 @@ const mockResponses = [
     lastAchievements: [],
     newAchievements: []
   },
-  // {
-  //   active: true,
-  //   game: {
-  //     name: "Halo: The Master Chief Collection",
-  //     image: "https://cdn.cloudflare.steamstatic.com/steam/apps/976730/header.jpg",
-  //     timePlayed: "375.3 hrs"
-  //   },
-  //   progress: {
-  //     desbloqueado: 163,
-  //     total: 700,
-  //     percentage: 23
-  //   },
-  //   lastAchievements: [],
-  //   newAchievements: [
-  //     {
-  //       id: "Autopista de la costa",
-  //       name: "Autopista de la costa",
-  //       image: "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/976730/f9c235fb5c6bb7a19a816ad7aa2b978933682217.jpg",
-  //       description: "H3: ODST: completaste Autopista de la costa.",
-  //       achieved: true,
-  //       unlocktime: Date.now()
-  //     }
-  //   ]
-  // },
   {
     active: true,
     game: {
