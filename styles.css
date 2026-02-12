@@ -245,12 +245,12 @@ p, span {
 
 
 /* =========================
-   GAME SECTION (FIXED BLOCK)
+   GAME SECTION
 ========================= */
 
 .gameinfo-container {
   width: 380px;
-  flex-shrink: 0; /* ✅ NO se mueve */
+  flex-shrink: 0;
 
   display: flex;
   align-items: center;
@@ -329,7 +329,6 @@ p, span {
   min-width: 0;
 }
 
-/* ✅ nombre juego no empuja */
 .gameprogress h2 {
   font-size: 28px;
   font-weight: 800;
@@ -390,7 +389,7 @@ p, span {
 
 .trophy-container {
   width: 240px;
-  flex-shrink: 0; /* ✅ bloque fijo */
+  flex-shrink: 0;
 
   display: flex;
   flex-direction: column;
@@ -408,7 +407,7 @@ p, span {
   align-items: center;
   justify-content: flex-start;
 
-  height: 150px; /* ✅ evita saltos */
+  height: 150px;
   gap: 10px;
 }
 

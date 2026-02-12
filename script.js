@@ -2,11 +2,11 @@
 /* =========================
    URL PARAMS
 ========================= */
-
+      
 const urlSearch = window.location.search;
 const params = new URLSearchParams(urlSearch);
 
-let numeroLogros = Number(params.get("numeroLogros") || 2);
+let numeroLogros = Number(params.get("numeroLogros") || 3);
 //Si el usuario coloca en el url un numero mayor al que se muestra en el menu, se usara el valor predeterminado de 3
 if(numeroLogros > 5 || numeroLogros <= 0){
   numeroLogros = 3;
@@ -16,7 +16,7 @@ const StreamerbotAdress = params.get("hostInput") || "127.0.0.1";
 const StreamerbotPort = params.get("portInput") || "8080";
 const steamid = params.get("steam_id") || window.ENV_STEAM_ID;
 const steamkey = params.get("steam_web_key") || window.ENV_STEAM_KEY;
-const hideAfter = Number(params.get("hideAfter") || 0);
+const hideAfter = Number(params.get("hideAfter") || 20);
 
 /* =========================
    DOM ELEMENTS
@@ -49,7 +49,27 @@ let sbConnect = false;
 let unlockQueue = [];
 let unlockPlaying = false;
 let lastUnlockId = null;
+let pendingHideTimeout = null;
+let waitingForUnlockSequence = false;
 
+
+const STORAGE_KEY = "steam_achievements";
+
+let knownAchievementIds = new Set();
+let hasBootstrappedAchievements = false;
+
+try {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  const parsed = raw ? JSON.parse(raw) : [];
+  if (Array.isArray(parsed)) {
+    knownAchievementIds = new Set(parsed);
+  }
+} catch (e) {
+  console.warn("Storage corrupto, reiniciando achievements", e);
+  localStorage.removeItem(STORAGE_KEY);
+}
+
+const processedUnlockIds = new Set();
 const baseUrl = "https://steam-backend-tw9u.onrender.com";
 const mockUrl = "http://localhost:3000"
 
@@ -109,6 +129,39 @@ async function updateWidget() {
 
   console.debug("DATA:", data);
   //console.debug("ULTIMOS LOGROS:", data.lastAchievements);
+
+  const last = data.lastAchievements || [];
+  const newlyUnlocked = [];
+
+  if(!hasBootstrappedAchievements){
+    for(const ach of last){
+      if(ach?.id){
+        knownAchievementIds.add(ach.id);
+      }
+    }
+
+    localStorage.setItem(
+      STORAGE_KEY, 
+      JSON.stringify([...knownAchievementIds])
+    );
+
+    hasBootstrappedAchievements = true;
+
+  }else{
+    for(const ach of last){
+      if(ach?.id && !knownAchievementIds.has(ach.id)){
+        knownAchievementIds.add(ach.id);
+        newlyUnlocked.push(ach);
+      }
+    }
+
+    if(newlyUnlocked.length){
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify([...knownAchievementIds])
+      );
+    }
+  }
 
   /* =========================
      ACTIVE / IDLE STATE
@@ -178,14 +231,13 @@ async function updateWidget() {
      UNLOCK QUEUE
   ========================= */
 
-  if (data.newAchievements?.length) {
-    for (const ach of data.newAchievements) {
-      if (ach.id !== lastUnlockId) {
-        unlockQueue.push(ach);
-        lastUnlockId = ach.id;
-      }
+  if (newlyUnlocked.length) {
+    unlockQueue.push(...newlyUnlocked);
+
+    if (!waitingForUnlockSequence) {
+      waitingForUnlockSequence = true;
+      handleNewAchievement();
     }
-    mostrarSiguiente();
   }
 
   /* =========================
@@ -201,7 +253,9 @@ async function updateWidget() {
     state.lastAchievementsIds = newIds;
     achievementQueue = newQueue;
 
-    toggleVisibility();
+    if(!unlockQueue.length && !unlockPlaying){
+      startHideAfter();
+    }
 
     if (achievementQueue.length > 1) {
       trophyLabel.textContent = "Últimos logros obtenidos";
@@ -219,10 +273,16 @@ async function updateWidget() {
    VISIBILITY
 ========================= */
 
-function toggleVisibility() {
-  if (hideAfter === 0) return;
+function startHideAfter(){
+  if(hideAfter === 0) return;
+
+  if(pendingHideTimeout){
+    clearTimeout(pendingHideTimeout);
+  }
+
   outer.classList.remove("hidden");
-  setTimeout(() => {
+
+  pendingHideTimeout = setTimeout(() => {
     outer.classList.add("hidden");
   }, hideAfter * 1000);
 }
@@ -326,10 +386,24 @@ function obtenerBoolean(param, valor) {
    UNLOCK OVERLAY
 ========================= */
 
+function handleNewAchievement(){
+  if(pendingHideTimeout){
+    clearTimeout(pendingHideTimeout);
+    pendingHideTimeout = null;
+  }
+
+  outer.classList.add("hidden");
+
+  setTimeout(() => {
+    outer.classList.remove("hidden");
+    mostrarSiguiente();
+  }, 5000);
+}
+
 function mostrarLogro(achievement, isLast, onDone) {
   widgetContent.classList.add("dimmed");
   unlockContent.classList.add("hidden");
-
+  
   setTimeout(() => {
     unlockImage.src = achievement.image;
     unlockTitle.textContent = achievement.name;
@@ -345,15 +419,20 @@ function mostrarLogro(achievement, isLast, onDone) {
      if (isLast) {
         unlockOverlay.classList.remove("show");
         widgetContent.classList.remove("dimmed");
+
+        waitingForUnlockSequence = false;
+
+        startHideAfter();
       }
     }, 400);
   }, 8000);
+  
 }
 
 function mostrarSiguiente() {
   if (unlockPlaying || unlockQueue.length === 0) return;
   unlockPlaying = true;
-
+  console.log("▶ Overlay start", unlockQueue.map(a => a.id));
   const isLast = unlockQueue.length === 1;
 
   const ach = unlockQueue.shift();
@@ -361,6 +440,7 @@ function mostrarSiguiente() {
     unlockPlaying = false;
     mostrarSiguiente();
   });
+  console.log("✔ Overlay finished");
 }
 
 /* =========================
@@ -374,11 +454,16 @@ updateWidget();
    MOCK STEAM API (TESTEO)
 ========================= */
 
-
 const USE_MOCK = false;
 
+/**
+ * 🔒 Timestamps fijos para evitar que el sistema
+ * detecte los mismos logros como "nuevos" cada fetch
+ */
+const UNLOCK_TIME_BASE = Date.now() - 60000;
 
 const mockResponses = [
+  // 1️⃣ Estado normal (sin logros nuevos)
   {
     active: true,
     game: {
@@ -394,6 +479,8 @@ const mockResponses = [
     lastAchievements: [],
     newAchievements: []
   },
+
+  // 2️⃣ Tick con MULTIPLES logros nuevos (caso crítico)
   {
     active: true,
     game: {
@@ -414,7 +501,7 @@ const mockResponses = [
         image: "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/976730/f9c235fb5c6bb7a19a816ad7aa2b978933682217.jpg",
         description: "H3: ODST: completaste Autopista de la costa.",
         achieved: true,
-        unlocktime: Date.now()
+        unlocktime: UNLOCK_TIME_BASE + 1000
       },
       {
         id: "Déjà Vu",
@@ -422,7 +509,7 @@ const mockResponses = [
         image: "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/976730/d97ee378cac6c6045e2ba998721951299028093c.jpg",
         description: "ODST en legendario con Hierro.",
         achieved: true,
-        unlocktime: Date.now()
+        unlocktime: UNLOCK_TIME_BASE + 2000
       },
       {
         id: "Volver",
@@ -430,10 +517,12 @@ const mockResponses = [
         image: "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/976730/f1fa005a6b9d12a8d65e30d8b94260a4dfcc1c84.jpg",
         description: "Halo 3 completado.",
         achieved: true,
-        unlocktime: Date.now()
+        unlocktime: UNLOCK_TIME_BASE + 3000
       }
     ]
   },
+
+  // 3️⃣ Tick posterior (ya NO deben volver a mostrarse)
   {
     active: true,
     game: {
@@ -446,17 +535,19 @@ const mockResponses = [
       total: 700,
       percentage: 24
     },
-    lastAchievements: [],
-    newAchievements: [
+    lastAchievements: [
       {
         id: "Volver",
         name: "Volver",
-        image: "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/976730/f1fa005a6b9d12a8d65e30d8b94260a4dfcc1c84.jpg",
-        description: "Halo 3 completado.",
-        achieved: true,
-        unlocktime: Date.now()
+        image: "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/976730/f1fa005a6b9d12a8d65e30d8b94260a4dfcc1c84.jpg"
+      },
+      {
+        id: "Déjà Vu",
+        name: "Déjà Vu",
+        image: "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/976730/d97ee378cac6c6045e2ba998721951299028093c.jpg"
       }
-    ]
+    ],
+    newAchievements: []
   }
 ];
 
@@ -466,10 +557,10 @@ if (USE_MOCK) {
   const originalFetch = window.fetch;
 
   window.fetch = async (...args) => {
-    console.warn(args[0]);
+    console.warn("MOCK FETCH:", args[0]);
 
     const data =
-      mockResponses[mockIndex] ||
+      mockResponses[mockIndex] ??
       mockResponses[mockResponses.length - 1];
 
     mockIndex++;
