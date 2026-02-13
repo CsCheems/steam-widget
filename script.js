@@ -16,7 +16,8 @@ const StreamerbotAdress = params.get("hostInput") || "127.0.0.1";
 const StreamerbotPort = params.get("portInput") || "8080";
 const steamid = params.get("steam_id") || window.ENV_STEAM_ID;
 const steamkey = params.get("steam_web_key") || window.ENV_STEAM_KEY;
-const hideAfter = Number(params.get("hideAfter") || 20);
+const hideAfter = Number(params.get("hideAfter") || 0);
+const language = params.get("language") || "latam";
 
 /* =========================
    DOM ELEMENTS
@@ -124,7 +125,7 @@ async function updateWidget() {
     return;
   }
 
-  const res = await fetch(`${baseUrl}/api/steam/achievements?steamid=${steamid}&steamkey=${steamkey}&numeroLogros=${numeroLogros}`);
+  const res = await fetch(`${mockUrl}/api/steam/achievements?steamid=${steamid}&steamkey=${steamkey}&numeroLogros=${numeroLogros}&language=${language}`);
   const data = await res.json();
 
   console.debug("DATA:", data);
@@ -177,7 +178,7 @@ async function updateWidget() {
       setTimeout(() => {
         widgetContent.style.display = "none";
         standbyText.style.display = "block";
-        standbyText.textContent = data.message || "Listo para monitorear";
+        standbyText.textContent = data.message || "Ready to Monitor";
       }, 500);
     }
     return;
@@ -258,10 +259,10 @@ async function updateWidget() {
     }
 
     if (achievementQueue.length > 1) {
-      trophyLabel.textContent = "Últimos logros obtenidos";
+      trophyLabel.textContent = "Latest Achievements";
       startAchievementRotation();
     } else {
-      trophyLabel.textContent = "Último logro obtenido";
+      trophyLabel.textContent = "Latest Achievement";
       stopAchievementRotation();
       showAchievement(0);
     }

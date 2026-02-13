@@ -150,12 +150,12 @@ function renderField(field) {
     line.appendChild(input);
 
     const txt = document.createElement("span");
-    txt.textContent = input.checked ? "Activado" : "Desactivado";
+    txt.textContent = input.checked ? "Active" : "Inactive";
     line.appendChild(txt);
 
     input.addEventListener("change", () => {
       state[field.id] = input.checked;
-      txt.textContent = input.checked ? "Activado" : "Desactivado";
+      txt.textContent = input.checked ? "Active" : "Inactive";
       buildUrl();
     });
 
@@ -189,6 +189,32 @@ function renderField(field) {
       wrap.appendChild(controlRow);
       return wrap;
   }
+
+  if (field.type === "select") {
+        const select = document.createElement("select");
+        select.className = "input";
+        select.id = field.id;
+
+        const options = field.options ?? [];
+
+        options.forEach((opt) => {
+            const option = document.createElement("option");
+            option.value = String(opt.value);
+            option.textContent = opt.label;
+            select.appendChild(option);
+        });
+
+        select.value = String(state[field.id] ?? field.default);
+
+        select.addEventListener("change", () => {
+            state[field.id] = select.value;
+            buildUrl();
+            refreshPreview?.();
+        });
+
+        wrap.appendChild(select);
+        return wrap;
+    }
 
   if (field.description) {
     const desc = document.createElement("div");
@@ -230,7 +256,7 @@ function copyUrl() {
 
   navigator.clipboard.writeText(val).then(() => {
     if (els.statusPill) {
-      els.statusPill.textContent = "Copiado ✅";
+      els.statusPill.textContent = "Copied ✅";
       els.statusPill.style.background = "rgba(169,112,255,0.18)";
       els.statusPill.style.borderColor = "rgba(169,112,255,0.26)";
       setTimeout(() => buildUrl(), 900);
@@ -268,7 +294,7 @@ function buildUrl() {
       els.statusPill.style.background = "rgba(255, 77, 77, 0.16)";
       els.statusPill.style.borderColor = "rgba(255, 77, 77, 0.22)";
     }
-    if (els.countPill) els.countPill.textContent = "0 parametros";
+    if (els.countPill) els.countPill.textContent = "0 parameters";
     return "";
   }
 
@@ -286,11 +312,11 @@ function buildUrl() {
   els.widgetUrl.value = url.toString();
 
   if (els.statusPill) {
-    els.statusPill.textContent = "Listo";
+    els.statusPill.textContent = "Ready";
     els.statusPill.style.background = "rgba(0, 255, 136, 0.14)";
     els.statusPill.style.borderColor = "rgba(0, 255, 136, 0.20)";
   }
-  if (els.countPill) els.countPill.textContent = `${count} parametros`;
+  if (els.countPill) els.countPill.textContent = `${count} parameters`;
 
   return url.toString();
 }

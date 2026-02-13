@@ -1,94 +1,110 @@
 {
-    "app": {
-    "title": "Tracker de Logros",
-    "subtitle": "Muestra tu progreso de logros a tus amigos.",
-    "brandLabel": "Tracker de Logros de Steam"
+  "app": {
+    "title": "Achievement Tracker",
+    "subtitle": "Show your achievement progress to your friends.",
+    "brandLabel": "Steam Achievement Tracker"
   },
   "base": {
-    "baseUrlLabel": "URL base del widget",
+    "baseUrlLabel": "Widget base URL",
     "baseUrlPlaceholder": "https://cscheems.github.io/steam-widget/",
     "defaultBaseUrl": "https://cscheems.github.io/steam-widget/"
   },
-  "sections":[
+  "sections": [
+    {
+      "id": "steamAuth",
+      "title": "Steam Credentials",
+      "description": "Enter your Steam Web API Key and Steam ID.",
+      "authSection": true,
+      "fields": [
         {
-            "id": "steamAuth",
-            "title": "Credenciales de Steam",
-            "description": "Ingresa tu Steam Web Key y Steam Id.",
-            "authSection": true,
-            "fields": [
-                {
-                "type": "password",
-                "id": "steam_web_key",
-                "label": "Steam Web Key",
-                "param": "steam_web_key",
-                "placeholder": "Client ID"
-                },
-                {
-                "type": "text",
-                "id": "steam_id",
-                "label": "Steam Id",
-                "param": "steam_id",
-                "placeholder": "Client Secret"
-                }
-            ]
+          "type": "password",
+          "id": "steam_web_key",
+          "label": "Steam Web API Key",
+          "param": "steam_web_key",
+          "placeholder": "Steam Web API Key"
         },
         {
-            "id": "widgetBehaviour",
-            "title": "Comportamiento",
-            "description": "Cantidad de logros en rotación",
-            "fields": [
-                {
-                    "type": "range",
-                    "id": "numeroLogros",
-                    "label": "Muestra el numero de logros en la rotación",
-                    "param": "numeroLogros",
-                    "default": 3,
-                    "min": 1,
-                    "max": 5,
-                    "step": 1,
-                    "suffix": ""
-                },
-                {
-                    "type": "range",
-                    "id": "hideAfter",
-                    "label": "Ocultar despues de N segundos",
-                    "param": "hideAfter",
-                    "default": 10,
-                    "min": 1,
-                    "max": 30,
-                    "step": 1,
-                    "suffix": ""
-                }
-            ]
-            },
-        {
-        "title": "Streamerbot",
-        "description": "Configuración de conexión con Streamerbot, esto permite a cambiar la categoria automaticamente en el momento que abras un juego en Steam.",
-        "fields": [
-            {
-                    "type": "switch",
-                    "id": "allowSb",
-                    "label": "Conectar con Streamerbot",
-                    "param": "allowSb",
-                    "default": false
-                },
-            {
-                "type": "text",
-                "id": "hostInput",
-                "label": "Host",
-                "param": "hostInput",
-                "default": "127.0.0.1",
-                "placeholder": "127.0.0.1"
-            },
-            {
-                "type": "text",
-                "id": "portInput",
-                "label": "Puerto",
-                "param": "portInput",
-                "default": "8080",
-                "placeholder": "8080"
-            }
-        ]
+          "type": "text",
+          "id": "steam_id",
+          "label": "Steam ID",
+          "param": "steam_id",
+          "placeholder": "Steam ID (64-bit)"
         }
-    ]
+      ]
+    },
+    {
+      "id": "widgetBehaviour",
+      "title": "Behavior",
+      "description": "Number of rotating achievements, auto-hide time, language.",
+      "fields": [
+        {
+          "type": "range",
+          "id": "numeroLogros",
+          "label": "Number of achievements to rotate through",
+          "param": "numeroLogros",
+          "default": 3,
+          "min": 1,
+          "max": 5,
+          "step": 1,
+          "suffix": ""
+        },
+        {
+          "type": "range",
+          "id": "hideAfter",
+          "label": "Auto-hide after N seconds",
+          "param": "hideAfter",
+          "default": 10,
+          "min": 1,
+          "max": 30,
+          "step": 1,
+          "suffix": ""
+        },
+        {
+            "type": "select",
+            "id": "language",
+            "label": "Language",
+            "param": "language",
+            "default": "en",
+            "options": [
+                { "value": "en", "label": "English" },
+                { "value": "spanish", "label": "Spanish" },
+                { "value": "latam", "label": "Spanish Latam" },
+                { "value": "french", "label": "French" },
+                { "value": "german", "label": "German" },
+                { "value": "italian", "label": "Italian" },
+                { "value": "russian", "label": "Russian" }  
+            ]
+        }
+      ]
+    },
+    {
+      "title": "Streamerbot",
+      "description": "Streamerbot connection settings. This lets the widget auto-update your stream category when you launch a game on Steam.",
+      "fields": [
+        {
+          "type": "switch",
+          "id": "allowSb",
+          "label": "Connect to Streamerbot",
+          "param": "allowSb",
+          "default": false
+        },
+        {
+          "type": "text",
+          "id": "hostInput",
+          "label": "Host",
+          "param": "hostInput",
+          "default": "127.0.0.1",
+          "placeholder": "127.0.0.1"
+        },
+        {
+          "type": "text",
+          "id": "portInput",
+          "label": "Port",
+          "param": "portInput",
+          "default": "8080",
+          "placeholder": "8080"
+        }
+      ]
+    }
+  ]
 }
