@@ -125,7 +125,7 @@ async function updateWidget() {
     return;
   }
 
-  const res = await fetch(`${mockUrl}/api/steam/achievements?steamid=${steamid}&steamkey=${steamkey}&numeroLogros=${numeroLogros}&language=${language}`);
+  const res = await fetch(`${baseUrl}/api/steam/achievements?steamid=${steamid}&steamkey=${steamkey}&numeroLogros=${numeroLogros}&language=${language}`);
   const data = await res.json();
 
   console.debug("DATA:", data);
