@@ -454,19 +454,14 @@ setInterval(updateWidget, 10000);
 updateWidget();
 
 /* =========================
-   MOCK STEAM API (TESTEO)
+   MOCK STEAM API (TESTING)
 ========================= */
 
 const USE_MOCK = false;
 
-/**
- * 🔒 Timestamps fijos para evitar que el sistema
- * detecte los mismos logros como "nuevos" cada fetch
- */
 const UNLOCK_TIME_BASE = Date.now() - 60000;
 
 const mockResponses = [
-  // 1️⃣ Estado normal (sin logros nuevos)
   {
     active: true,
     game: {
@@ -482,8 +477,6 @@ const mockResponses = [
     lastAchievements: [],
     newAchievements: []
   },
-
-  // 2️⃣ Tick con MULTIPLES logros nuevos (caso crítico)
   {
     active: true,
     game: {
@@ -524,8 +517,6 @@ const mockResponses = [
       }
     ]
   },
-
-  // 3️⃣ Tick posterior (ya NO deben volver a mostrarse)
   {
     active: true,
     game: {
