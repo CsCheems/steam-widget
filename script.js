@@ -315,7 +315,7 @@ function showAchievement(index) {
   const display = document.getElementById("trophyDisplay");
 
   if (!achievementQueue.length) {
-    document.getElementById("trophyName").textContent = "Sin logros recientes";
+    document.getElementById("trophyName").textContent = "No achievements to show";
     document.querySelector(".trophyimg").style.display = "none";
     return;
   }
@@ -333,7 +333,7 @@ function showAchievement(index) {
 }
 
 function startAchievementRotation() {
-  stopAchievementRotation(); // 🔥 evita duplicar intervals
+  stopAchievementRotation(); 
   achievementIndex = 0;
   showAchievement(achievementIndex);
   achievementInterval = setInterval(() => {
@@ -392,13 +392,15 @@ function handleNewAchievement(){
     clearTimeout(pendingHideTimeout);
     pendingHideTimeout = null;
   }
-
-  outer.classList.add("hidden");
-
-  setTimeout(() => {
-    outer.classList.remove("hidden");
+  if(hideAfter > 0){
+    outer.classList.add("hidden");
+    setTimeout(() => {
+      outer.classList.remove("hidden");
+      mostrarSiguiente();
+    }, 5000);
+  }else{
     mostrarSiguiente();
-  }, 5000);
+  }
 }
 
 function mostrarLogro(achievement, isLast, onDone) {

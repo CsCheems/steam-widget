@@ -1,0 +1,47 @@
+{
+  "app": {
+    "title": "Achievement Tracker",
+    "subtitle": "Show your achievement progress to your friends.",
+    "brandLabel": "Steam Achievement Tracker"
+  },
+  "base": {
+    "baseUrlLabel": "Widget base URL",
+    "baseUrlPlaceholder": "https://cscheems.github.io/steam-widget/",
+    "defaultBaseUrl": "https://cscheems.github.io/steam-widget/"
+  },
+  "sections": [
+    {
+      "id": "widgetBehaviour",
+      "title": "Game Info",
+      "description": "Shows Game Name and List of Locked Achievements",
+      "fields": [
+        {
+          "type": "text",
+          "id": "gameName",
+          "label": "Game",
+          "param": "gameName",
+          "default": "",
+          "placeholder": ""
+        },
+        {
+            "type": "select",
+            "id": "lockedAchievement",
+            "label": "Achievement to Track",
+            "param": "lockedAchievement",
+            "default": 0
+        },
+        {
+          "type": "range",
+          "id": "hideAfter",
+          "label": "Auto-hide after N seconds",
+          "param": "hideAfter",
+          "default": 10,
+          "min": 1,
+          "max": 30,
+          "step": 1,
+          "suffix": ""
+        }
+      ]
+    }
+  ]
+}
