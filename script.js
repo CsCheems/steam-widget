@@ -151,7 +151,7 @@ async function updateWidget() {
      widgetContent.style.display = "none";
   } else {
     hideTrackedAchievement();
-     widgetContent.style.display = "block";
+     widgetContent.style.display = "flex";
   }
 
   const last = data.lastAchievements || [];
