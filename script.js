@@ -55,6 +55,8 @@ let waitingForUnlockSequence = false;
 
 
 const STORAGE_KEY = "steam_achievements";
+const DOCK_DATA_KEY = "steam_widget_dock_data";
+const TRACKED_CONFIG_KEY = "steam_widget_tracked_config";
 
 let knownAchievementIds = new Set();
 let hasBootstrappedAchievements = false;
@@ -129,7 +131,28 @@ async function updateWidget() {
   const data = await res.json();
 
   console.debug("DATA:", data);
-  //console.debug("ULTIMOS LOGROS:", data.lastAchievements);
+  
+  const theWholeDamnData = {
+    steamkey,
+    steamid,
+    language,
+    gameName: data?.game?.name ?? "",
+    achievementsList: data?.blockedAchievementsData ?? [],
+    numeroLogros,
+    updatedAt: Date.now()
+  };
+
+  localStorage.setItem(DOCK_DATA_KEY, JSON.stringify(theWholeDamnData));
+
+  const tracked = getTrackedConfig();
+
+  if (tracked?.enabled) {
+    renderTrackedAchievement(tracked);
+     widgetContent.style.display = "none";
+  } else {
+    hideTrackedAchievement();
+     widgetContent.style.display = "block";
+  }
 
   const last = data.lastAchievements || [];
   const newlyUnlocked = [];
@@ -304,8 +327,18 @@ function resize() {
   outer.style.transform = `scale(${scale})`;
 }
 
+/* =========================
+   WINDOW
+========================= */
+
 window.addEventListener("resize", resize);
 window.onload = resize;
+
+window.addEventListener("storage", (e) => {
+  if (e.key === TRACKED_CONFIG_KEY) {
+    updateWidget();
+  }
+});
 
 /* =========================
    ACHIEVEMENTS
@@ -447,11 +480,43 @@ function mostrarSiguiente() {
 }
 
 /* =========================
+   TRACK OVERLAY
+========================= */
+
+function getTrackedConfig() {
+  try {
+    const raw = localStorage.getItem(TRACKED_CONFIG_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed;
+  } catch (err) {
+    return null;
+  }
+}
+
+
+function renderTrackedAchievement(tracked) {
+  const overlay = document.getElementById("trackingOverlay");
+
+  document.getElementById("trackingTitle").textContent = tracked.name;
+  document.getElementById("trackingDesc").textContent = tracked.description || "Hidden achievements don't have descriptions";
+  document.getElementById("trackingImage").src = tracked.image;
+
+  overlay.classList.add("show");
+}
+
+function hideTrackedAchievement() {
+  document
+    .getElementById("trackingOverlay")
+    .classList.remove("show");
+}
+
+/* =========================
    INTERVAL
 ========================= */
 
 setInterval(updateWidget, 10000);
 updateWidget();
+<<<<<<< HEAD
 
 /* =========================
    MOCK STEAM API (TESTING)
@@ -565,3 +630,5 @@ if (USE_MOCK) {
     };
   };
 }
+=======
+>>>>>>> 73c1b4c (Tracking overlay implementation)

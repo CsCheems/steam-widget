@@ -1,4 +1,7 @@
 
+const DOCK_DATA_KEY = "steam_widget_dock_data";
+const TRACKED_CONFIG_KEY = "steam_widget_tracked_config";
+
 window.uiReady = new Promise((resolve) => {
   window.__resolveUIReady = resolve;
 });
@@ -26,43 +29,7 @@ const els = {
 let schema = null;
 let state = {};
 
-// Estado auth compartido con auth.js
-window.authState = window.authState || {
-  isAuthorized: false,
-  refreshToken: null
-};
-
 document.addEventListener("DOMContentLoaded", init);
-
-async function init() {
-  const res = await fetch("./config/config.json", { cache: "no-store" });
-  schema = await res.json();
-
-  // App info
-  els.appTitle.textContent = schema.app?.title ?? "Configuración";
-  els.appSubtitle.textContent = schema.app?.subtitle ?? "";
-
-  // Base URL
-  els.baseUrl.placeholder =
-    schema.base?.baseUrlPlaceholder ?? "URL base…";
-  els.baseUrl.value =
-    schema.base?.defaultBaseUrl ?? "";
-
-  setDefaultState();
-  renderSections();
-  buildUrl();
-
-  // Listeners
-  els.copyBtn.addEventListener("click", copyUrl);
-
-  els.baseUrl.addEventListener("input", () => {
-    buildUrl();
-  });
-
-  window.__resolveUIReady();
-  console.log("[ui] UI lista");
-
-}
 
 // --------------------------
 // Estado inicial
@@ -150,13 +117,13 @@ function renderField(field) {
     line.appendChild(input);
 
     const txt = document.createElement("span");
-    txt.textContent = input.checked ? "Active" : "Inactive";
+    txt.textContent = input.checked ? "Enabled" : "Disabled";
     line.appendChild(txt);
 
     input.addEventListener("change", () => {
       state[field.id] = input.checked;
-      txt.textContent = input.checked ? "Active" : "Inactive";
-      buildUrl();
+      txt.textContent = input.checked ? "Enabled" : "Disabled";
+      pushTrackedConfigToWidget();
     });
 
     row.appendChild(line);
@@ -180,7 +147,6 @@ function renderField(field) {
       range.addEventListener("input", () => {
       state[field.id] = Number(range.value);
       valuePill.textContent = `${range.value}${field.suffix ?? ""}`;
-      buildUrl();
       refreshPreview();
       });
 
@@ -195,7 +161,14 @@ function renderField(field) {
         select.className = "input";
         select.id = field.id;
 
-        const options = field.options ?? [];
+        let options = field.options ?? [];
+
+        if(field.id === "lockedAchievement" && Array.isArray(window.__achievementsFromWidget)){
+          options = window.__achievementsFromWidget.map((ach) => ({
+            value: ach.id,
+            label: ach.name || ach.id
+          }));
+        }
 
         options.forEach((opt) => {
             const option = document.createElement("option");
@@ -208,8 +181,8 @@ function renderField(field) {
 
         select.addEventListener("change", () => {
             state[field.id] = select.value;
-            buildUrl();
-            refreshPreview?.();
+            pushTrackedConfigToWidget();
+            
         });
 
         wrap.appendChild(select);
@@ -243,38 +216,11 @@ function renderField(field) {
   input.addEventListener("input", () => {
     state[field.id] =
       field.type === "number" ? Number(input.value) : input.value;
-    buildUrl();
+    pushTrackedConfigToWidget(); 
   });
 
   wrap.appendChild(input);
   return wrap;
-}
-
-function copyUrl() {
-  const val = (els.widgetUrl?.value || "").trim();
-  if (!val) return;
-
-  navigator.clipboard.writeText(val).then(() => {
-    if (els.statusPill) {
-      els.statusPill.textContent = "Copied ✅";
-      els.statusPill.style.background = "rgba(169,112,255,0.18)";
-      els.statusPill.style.borderColor = "rgba(169,112,255,0.26)";
-      setTimeout(() => buildUrl(), 900);
-    }
-  });
-}
-
-function toggleCopyButton() {
-  const copyCard = document.getElementById("copyUrl");
-  if (!copyCard) return;
-
-  copyCard.style.display = window.authState.isAuthorized
-    ? "block"
-    : "none";
-}
-
-function normalizeBaseUrl(url) {
-    return (url || "").trim();
 }
 
 function toQueryValue(field, value) {
@@ -284,42 +230,7 @@ function toQueryValue(field, value) {
     return String(value ?? "");
 }
 
-function buildUrl() {
-  const baseUrl = normalizeBaseUrl(schema?.base?.defaultBaseUrl);
 
-  if (!baseUrl) {
-    if (els.widgetUrl) els.widgetUrl.value = "";
-    if (els.statusPill) {
-      els.statusPill.textContent = "Falta URL base";
-      els.statusPill.style.background = "rgba(255, 77, 77, 0.16)";
-      els.statusPill.style.borderColor = "rgba(255, 77, 77, 0.22)";
-    }
-    if (els.countPill) els.countPill.textContent = "0 parameters";
-    return "";
-  }
-
-  const url = new URL(baseUrl, window.location.href);
-
-  let count = 0;
-  for (const section of schema.sections) {
-    for (const field of section.fields) {
-      const v = state[field.id];
-      url.searchParams.set(field.param, toQueryValue(field, v));
-      count++;
-    }
-  }
-
-  els.widgetUrl.value = url.toString();
-
-  if (els.statusPill) {
-    els.statusPill.textContent = "Ready";
-    els.statusPill.style.background = "rgba(0, 255, 136, 0.14)";
-    els.statusPill.style.borderColor = "rgba(0, 255, 136, 0.20)";
-  }
-  if (els.countPill) els.countPill.textContent = `${count} parameters`;
-
-  return url.toString();
-}
 
 async function init() {
   const res = await fetch("./config/config.json", { cache: "no-store" });
@@ -327,62 +238,61 @@ async function init() {
   console.debug("Schema: ", schema);
   
   setDefaultState();
+  loadWidgetDataIntoState();
   renderSections();
+  pushTrackedConfigToWidget();
   buildUrl();
 
   els.copyBtn.addEventListener("click", copyUrl);
 }
 
-document.addEventListener("DOMContentLoaded", init);
+function loadWidgetDataIntoState(){
+  try{
+    const raw = localStorage.getItem(DOCK_DATA_KEY);
+    if(!raw) return;
 
-// === COPIAR STRING DE STREAMERBOT 
+    const widgetdata = JSON.parse(raw);
 
-function copiarImportString() {
-  const btn = document.getElementById("import-copy");
-  if (!btn) return;
+    state.gameName = widgetdata.gameName || "";
 
-  const text = btn.dataset.copyText || "";
-  if (!text) return;
+    window.__achievementsFromWidget = Array.isArray(widgetdata.achievementsList)
+      ? widgetdata.achievementsList
+      : [];
 
-  // Método nuevo: Clipboard API con fallback
-  const doToast = () => {
-    const toast = btn.querySelector(".copy-block__toast");
-    if (!toast) return;
-
-    gsap.killTweensOf(toast);
-    gsap.set(toast, { opacity: 0, y: -6 });
-    gsap.to(toast, { opacity: 1, y: 0, duration: 0.18, ease: "power2.out" });
-    gsap.to(toast, { opacity: 0, y: -6, duration: 0.18, ease: "power2.in", delay: 1.1 });
-  };
-
-  const fallbackCopy = (value) => {
-    const ta = document.createElement("textarea");
-    ta.value = value;
-    ta.setAttribute("readonly", "");
-    ta.style.position = "fixed";
-    ta.style.opacity = "0";
-    ta.style.left = "-9999px";
-    document.body.appendChild(ta);
-    ta.select();
-    try {
-      document.execCommand("copy");
-      doToast();
-    } finally {
-      document.body.removeChild(ta);
+    if(!state.lockedAchievement && window.__achievementsFromWidget.length){
+      state.lockedAchievement = window.__achievementsFromWidget[0].id;
     }
-  };
-
-  if (navigator.clipboard && window.isSecureContext) {
-    navigator.clipboard.writeText(text)
-      .then(doToast)
-      .catch(() => fallbackCopy(text));
-  } else {
-    fallbackCopy(text);
+  }catch(e){
+    console.warn("Failed to load data: ", e);
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  const btn = document.getElementById("import-copy");
-  if (!btn) return;
-  btn.addEventListener("click", copiarImportString);
-});
+function pushTrackedConfigToWidget() {
+  if (!window.__achievementsFromWidget) return;
+
+  const selectedId = state.lockedAchievement;
+  const isTracking = state.trackedMode ?? false;
+
+  const selectedAchievement = window.__achievementsFromWidget.find(
+    (a) => a.id === selectedId
+  );
+
+  if (!selectedAchievement) return;
+
+  const trackedConfig = {
+    enabled: isTracking,
+    achievementId: selectedAchievement.id,
+    name: selectedAchievement.name,
+    description: selectedAchievement.description,
+    image: selectedAchievement.icon || selectedAchievement.image,
+    gameName: state.gameName,
+    updatedAt: Date.now()
+  };
+
+  localStorage.setItem(
+    TRACKED_CONFIG_KEY,
+    JSON.stringify(trackedConfig)
+  );
+}
+
+document.addEventListener("DOMContentLoaded", init);

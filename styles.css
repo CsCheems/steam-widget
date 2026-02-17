@@ -241,6 +241,95 @@ p, span {
   color: var(--text-soft);
 }
 
+/* =========================
+   TRACKING OVERLAY
+========================= */
+
+.tracking-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2; /* below unlock (3) */
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 2em 2.5em;
+
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(4px);
+
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.tracking-overlay.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.tracking-header {
+  margin-bottom: 0.8em;
+}
+
+.tracking-label {
+  font-size: 0.9em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-soft);
+}
+
+.tracking-content {
+  display: flex;
+  align-items: center;
+  gap: 1.5em;
+}
+
+.tracking-img-slot {
+  width: 96px;
+  height: 96px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-img);
+  background: #111827;
+}
+
+.tracking-img-slot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tracking-text {
+  display: flex;
+  flex-direction: column;
+  max-width: 380px;
+}
+
+.tracking-text h2 {
+  font-size: 1.8em;
+  margin-bottom: 6px;
+  color: var(--text-main);
+}
+
+.tracking-text p {
+  font-size: 1.1em;
+  color: var(--text-soft);
+
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Dim base content when tracking */
+.tracking-overlay.show ~ .widget-content {
+  opacity: 0.25;
+  transform: scale(0.98);
+}
 
 
 /* =========================
