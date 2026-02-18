@@ -146,15 +146,7 @@ async function updateWidget() {
 
   localStorage.setItem(DOCK_DATA_KEY, JSON.stringify(theWholeDamnData));
 
-  const tracked = getTrackedConfig();
-
-  if (tracked?.enabled) {
-    renderTrackedAchievement(tracked);
-     widgetContent.style.display = "none";
-  } else {
-    hideTrackedAchievement();
-     widgetContent.style.display = "flex";
-  }
+  
 
   const last = data.lastAchievements || [];
   const newlyUnlocked = [];
@@ -215,6 +207,20 @@ async function updateWidget() {
     standbyContainer.style.opacity = 0;
     widgetContent.style.display = "flex";
     requestAnimationFrame(() => widgetContent.classList.add("show"));
+  }
+
+  /* =========================
+   TRACKING STATE
+  ========================= */
+
+  const tracked = getTrackedConfig();
+
+  if (tracked?.enabled) {
+    renderTrackedAchievement(tracked);
+     widgetContent.style.display = "none";
+  } else {
+    hideTrackedAchievement();
+     widgetContent.style.display = "flex";
   }
 
   /* =========================
@@ -504,13 +510,12 @@ function renderTrackedAchievement(tracked) {
   document.getElementById("trackingDesc").textContent = tracked.description || "Hidden achievements don't have descriptions";
   document.getElementById("trackingImage").src = tracked.image;
 
-  overlay.classList.add("show");
+  overlay.style.opacity = 1;
 }
 
 function hideTrackedAchievement() {
-  document
-    .getElementById("trackingOverlay")
-    .classList.remove("show");
+  const overlay = document.getElementById("trackingOverlay");
+  overlay.style.opacity = 0;
 }
 
 /* =========================
