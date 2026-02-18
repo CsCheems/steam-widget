@@ -35,6 +35,8 @@ const unlockImage = document.getElementById("unlockImage");
 const unlockTitle = document.getElementById("unlockTitle");
 const unlockDesc = document.getElementById("unlockDesc");
 
+const trackingOverlay = document.getElementById("trackingOverlay");
+
 let outer = document.getElementById("steam-wrapper");
 
 /* =========================
@@ -200,6 +202,7 @@ async function updateWidget() {
 
       setTimeout(() => {
         widgetContent.style.display = "none";
+        hideTrackedAchievement();
         standbyContainer.style.opacity = 1;
         standbyText.textContent = data.message || "Ready to Monitor";
       }, 500);
