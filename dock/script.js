@@ -26,10 +26,7 @@ const els = {
   sectionsMount: document.querySelector(".left"),
 };
 
-let schema = null;
-let state = {};
 
-document.addEventListener("DOMContentLoaded", init);
 
 // --------------------------
 // Estado inicial
@@ -241,9 +238,9 @@ async function init() {
   loadWidgetDataIntoState();
   renderSections();
   pushTrackedConfigToWidget();
-  buildUrl();
 
-  els.copyBtn.addEventListener("click", copyUrl);
+
+
 }
 
 function loadWidgetDataIntoState(){
@@ -261,6 +258,10 @@ function loadWidgetDataIntoState(){
 
     if(!state.lockedAchievement && window.__achievementsFromWidget.length){
       state.lockedAchievement = window.__achievementsFromWidget[0].id;
+    }
+
+    if(state.lockedAchievement && !window.__achievementsFromWidget.some(a => a.id === state.lockedAchievement)){
+      state.lockedAchievement = window.__achievementsFromWidget[0]?.id || "";
     }
   }catch(e){
     console.warn("Failed to load data: ", e);
@@ -295,4 +296,13 @@ function pushTrackedConfigToWidget() {
   );
 }
 
+let schema = null;
+let state = {};
+
 document.addEventListener("DOMContentLoaded", init);
+
+window.addEventListener("storage", (e) => {
+  if(e.key !== DOCK_DATA_KEY) return;
+  loadWidgetDataIntoState();
+  renderSections();
+});

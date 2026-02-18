@@ -23,7 +23,7 @@ const language = params.get("language") || "latam";
    DOM ELEMENTS
 ========================= */
 
-const standbyText = document.getElementById("standbyText");
+const standbyContainer = document.getElementById("standbyContainer");
 const widgetContent = document.getElementById("widgetContent");
 const card = document.getElementById("card");
 const wrapper = document.querySelector(".wrapperFade");
@@ -200,7 +200,7 @@ async function updateWidget() {
 
       setTimeout(() => {
         widgetContent.style.display = "none";
-        standbyText.style.display = "block";
+        standbyContainer.style.opacity = 1;
         standbyText.textContent = data.message || "Ready to Monitor";
       }, 500);
     }
@@ -209,7 +209,7 @@ async function updateWidget() {
 
   if (state.active !== true) {
     state.active = true;
-    standbyText.style.display = "none";
+    standbyContainer.style.opacity = 0;
     widgetContent.style.display = "flex";
     requestAnimationFrame(() => widgetContent.classList.add("show"));
   }

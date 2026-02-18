@@ -129,9 +129,22 @@ p, span {
 /* =========================
    STANDBY MODE
 ========================= */
+.standby-container{
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 2.5em;
+
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease-in-out;
+}
 
 .standby-text {
-  display: none;
   width: 100%;
   text-align: center;
   font-size: 3.5em;
@@ -248,14 +261,14 @@ p, span {
 .tracking-overlay {
   position: absolute;
   inset: 0;
-  z-index: 2; /* below unlock (3) */
+  z-index: 2; 
 
   display: flex;
   flex-direction: column;
   justify-content: center;
   padding: 2em 2.5em;
 
-  background: rgba(0, 0, 0, 0.35);
+  
   backdrop-filter: blur(4px);
 
   opacity: 0;
