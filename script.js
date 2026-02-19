@@ -448,6 +448,7 @@ function handleNewAchievement(){
 function mostrarLogro(achievement, isLast, onDone) {
   widgetContent.classList.add("dimmed");
   unlockContent.classList.add("hidden");
+  hideTrackedAchievement();
   
   setTimeout(() => {
     unlockImage.src = achievement.image;
@@ -461,7 +462,8 @@ function mostrarLogro(achievement, isLast, onDone) {
     unlockContent.classList.add("hidden");
     setTimeout(() => {
       if (typeof onDone === "function") onDone();
-     if (isLast) {
+      if (isLast) {
+        renderTrackedAchievement(tracked);
         unlockOverlay.classList.remove("show");
         widgetContent.classList.remove("dimmed");
 
