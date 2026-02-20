@@ -54,6 +54,7 @@ let unlockPlaying = false;
 let lastUnlockId = null;
 let pendingHideTimeout = null;
 let waitingForUnlockSequence = false;
+let currentOverlay = "normal";
 
 
 const STORAGE_KEY = "steam_achievements";
@@ -135,18 +136,18 @@ async function updateWidget() {
   console.debug("DATA:", data);
   
   const theWholeDamnData = {
-    steamkey,
-    steamid,
-    language,
     gameName: data?.game?.name ?? "",
     achievementsList: data?.blockedAchievementsData ?? [],
     numeroLogros,
     updatedAt: Date.now()
   };
 
-  localStorage.setItem(DOCK_DATA_KEY, JSON.stringify(theWholeDamnData));
+  const currentRaw = localStorage.getItem(DOCK_DATA_KEY); 
+  const current = currentRaw ? JSON.parse(currentRaw) : null;
 
-  
+  if (!current || current.gameName !== theWholeDamnData.gameName) {
+    localStorage.setItem(DOCK_DATA_KEY, JSON.stringify(theWholeDamnData));
+  }
 
   const last = data.lastAchievements || [];
   const newlyUnlocked = [];
@@ -210,18 +211,10 @@ async function updateWidget() {
   }
 
   /* =========================
-   TRACKING STATE
+   OVERLAY STATE
   ========================= */
 
-  const tracked = getTrackedConfig();
-
-  if (tracked?.enabled) {
-    renderTrackedAchievement(tracked);
-     widgetContent.style.display = "none";
-  } else {
-    hideTrackedAchievement();
-     widgetContent.style.display = "flex";
-  }
+  updateOverlayState();
 
   /* =========================
   GAME DATA
@@ -344,9 +337,10 @@ window.addEventListener("resize", resize);
 window.onload = resize;
 
 window.addEventListener("storage", (e) => {
-  if (e.key === TRACKED_CONFIG_KEY) {
-    updateWidget();
-  }
+  console.log("E", e);
+  if (e.key !== TRACKED_CONFIG_KEY) return;
+
+  updateOverlayState();
 });
 
 /* =========================
@@ -448,7 +442,6 @@ function handleNewAchievement(){
 function mostrarLogro(achievement, isLast, onDone) {
   widgetContent.classList.add("dimmed");
   unlockContent.classList.add("hidden");
-  hideTrackedAchievement();
   
   setTimeout(() => {
     unlockImage.src = achievement.image;
@@ -463,13 +456,14 @@ function mostrarLogro(achievement, isLast, onDone) {
     setTimeout(() => {
       if (typeof onDone === "function") onDone();
       if (isLast) {
-        renderTrackedAchievement(tracked);
         unlockOverlay.classList.remove("show");
         widgetContent.classList.remove("dimmed");
 
         waitingForUnlockSequence = false;
-
+        unlockPlaying = false;
+        updateOverlayState();
         startHideAfter();
+
       }
     }, 400);
   }, 8000);
@@ -479,15 +473,13 @@ function mostrarLogro(achievement, isLast, onDone) {
 function mostrarSiguiente() {
   if (unlockPlaying || unlockQueue.length === 0) return;
   unlockPlaying = true;
-  console.log("▶ Overlay start", unlockQueue.map(a => a.id));
+  updateOverlayState();
   const isLast = unlockQueue.length === 1;
-
   const ach = unlockQueue.shift();
   mostrarLogro(ach, isLast, () => {
     unlockPlaying = false;
     mostrarSiguiente();
   });
-  console.log("✔ Overlay finished");
 }
 
 /* =========================
@@ -518,6 +510,32 @@ function renderTrackedAchievement(tracked) {
 function hideTrackedAchievement() {
   const overlay = document.getElementById("trackingOverlay");
   overlay.style.opacity = 0;
+}
+
+/* =========================
+   OVERLAY MANAGER
+========================= */
+
+function updateOverlayState(){
+  const tracked = getTrackedConfig();
+
+  if(unlockPlaying || unlockQueue.length > 0){
+    currentOverlay = "unlock";
+    widgetContent.style.display = "none";
+    hideTrackedAchievement();
+    return;
+  }
+
+  if(tracked?.enabled){
+    currentOverlay = "tracked";
+    widgetContent.style.display = "none";
+    renderTrackedAchievement(tracked);
+    return;
+  }
+
+  currentOverlay = "normal";
+  hideTrackedAchievement();
+  widgetContent.style.display = "flex";
 }
 
 /* =========================

@@ -277,11 +277,11 @@ p, span {
 }
 
 .tracking-label {
-  font-size: 0.9em;
+  font-size: 1.6em;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--text-soft);
+  color: var(--text-main);
 }
 
 .tracking-content {
@@ -308,7 +308,8 @@ p, span {
 .tracking-text {
   display: flex;
   flex-direction: column;
-  max-width: 380px;
+  align-items: start;
+  max-width: 80%;
 }
 
 .tracking-text h2 {
@@ -318,13 +319,12 @@ p, span {
 }
 
 .tracking-text p {
-  font-size: 1.1em;
-  color: var(--text-soft);
-
+  font-size: 1.5em;
+  font-weight: 600;
+  color: var(--text-main);
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-
   overflow: hidden;
   text-overflow: ellipsis;
 }

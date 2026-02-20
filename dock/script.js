@@ -239,8 +239,6 @@ async function init() {
   renderSections();
   pushTrackedConfigToWidget();
 
-
-
 }
 
 function loadWidgetDataIntoState(){
@@ -250,50 +248,69 @@ function loadWidgetDataIntoState(){
 
     const widgetdata = JSON.parse(raw);
 
-    state.gameName = widgetdata.gameName || "";
+    const prevGameName = state.gameName || "";
+    const nextGameName = widgetdata.gameName || "";
+
+    const gameChanged = prevGameName && nextGameName && prevGameName !== nextGameName;
+
+    state.gameName = nextGameName;
 
     window.__achievementsFromWidget = Array.isArray(widgetdata.achievementsList)
       ? widgetdata.achievementsList
       : [];
 
-    if(!state.lockedAchievement && window.__achievementsFromWidget.length){
+    if (!window.__achievementsFromWidget.length) {
+      state.lockedAchievement = "";
+      return;
+    }
+
+    if (gameChanged) {
+      state.lockedAchievement = window.__achievementsFromWidget[0].id;
+      return;
+    }
+
+    if(!state.lockedAchievement){
+      state.lockedAchievement = window.__achievementsFromWidget[0].id;
+      return;
+    }
+
+    const exists = window.__achievementsFromWidget.some(a => a.id === state.lockedAchievement);
+    if(!exists){
       state.lockedAchievement = window.__achievementsFromWidget[0].id;
     }
 
-    if(state.lockedAchievement && !window.__achievementsFromWidget.some(a => a.id === state.lockedAchievement)){
-      state.lockedAchievement = window.__achievementsFromWidget[0]?.id || "";
-    }
   }catch(e){
     console.warn("Failed to load data: ", e);
   }
 }
 
 function pushTrackedConfigToWidget() {
-  if (!window.__achievementsFromWidget) return;
+    if (!window.__achievementsFromWidget) return;
 
-  const selectedId = state.lockedAchievement;
-  const isTracking = state.trackedMode ?? false;
+    const isTracking = state.trackedMode ?? false;
 
-  const selectedAchievement = window.__achievementsFromWidget.find(
-    (a) => a.id === selectedId
-  );
+    const list = window.__achievementsFromWidget;
+    if (!Array.isArray(list) || !list.length) return;
 
-  if (!selectedAchievement) return;
+    let selectedId = state.lockedAchievement;
+    let selectedAchievement = list.find(a => a.id === selectedId);
 
-  const trackedConfig = {
-    enabled: isTracking,
-    achievementId: selectedAchievement.id,
-    name: selectedAchievement.name,
-    description: selectedAchievement.description,
-    image: selectedAchievement.icon || selectedAchievement.image,
-    gameName: state.gameName,
-    updatedAt: Date.now()
-  };
+    if (!selectedAchievement) {
+      selectedAchievement = list[0];
+      state.lockedAchievement = selectedAchievement.id;
+    }
 
-  localStorage.setItem(
-    TRACKED_CONFIG_KEY,
-    JSON.stringify(trackedConfig)
-  );
+    const trackedConfig = {
+      enabled: isTracking,
+      achievementId: selectedAchievement.id,
+      name: selectedAchievement.name,
+      description: selectedAchievement.description,
+      image: selectedAchievement.icon || selectedAchievement.image,
+      gameName: state.gameName,
+      updatedAt: Date.now()
+    };
+
+    localStorage.setItem(TRACKED_CONFIG_KEY, JSON.stringify(trackedConfig));
 }
 
 let schema = null;
@@ -301,8 +318,14 @@ let state = {};
 
 document.addEventListener("DOMContentLoaded", init);
 
+
+
 window.addEventListener("storage", (e) => {
   if(e.key !== DOCK_DATA_KEY) return;
   loadWidgetDataIntoState();
   renderSections();
+
+  if(state.trackedMode){
+    pushTrackedConfigToWidget();
+  }
 });
