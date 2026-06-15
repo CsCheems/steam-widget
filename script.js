@@ -57,25 +57,9 @@ let waitingForUnlockSequence = false;
 let currentOverlay = "normal";
 
 
-const STORAGE_KEY = "steam_achievements";
 const DOCK_DATA_KEY = "steam_widget_dock_data";
 const TRACKED_CONFIG_KEY = "steam_widget_tracked_config";
 
-let knownAchievementIds = new Set();
-let hasBootstrappedAchievements = false;
-
-try {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  const parsed = raw ? JSON.parse(raw) : [];
-  if (Array.isArray(parsed)) {
-    knownAchievementIds = new Set(parsed);
-  }
-} catch (e) {
-  console.warn("Storage corrupto, reiniciando achievements", e);
-  localStorage.removeItem(STORAGE_KEY);
-}
-
-const processedUnlockIds = new Set();
 const baseUrl = "https://steam-backend-tw9u.onrender.com";
 const mockUrl = "http://localhost:3000"
 
@@ -84,12 +68,13 @@ const mockUrl = "http://localhost:3000"
 ========================= */
 
 const state = {
-  active: null,
-  gameName: "",
-  gameImage: "",
-  progressPct: null,
-  lastAchievementsIds: []
-};
+    active: null,
+    appid: null,
+    gameName: "",
+    gameImage: "",
+    progressPct: null,
+    lastAchievementsIds: []
+  };
 
 function extractIds(list = []) {
   return list.map(a => a.id ?? `${a.name}|${a.image}`);
@@ -117,182 +102,321 @@ const client = new StreamerbotClient({
   onDisconnect: () =>{
     sbConnect = false;
   }
-})
+});
+
+client.on("General.Custom", (response) => {
+	const data = response?.data;
+
+	if (data?.type !== "steam_achievement") {
+		return;
+	}
+
+	const achievement = {
+		id: String(data.eventId),
+		name: data.name,
+		description: data.description,
+		image: data.image
+	};
+
+	// Overlay
+	unlockQueue.push(achievement);
+
+	// Rotación
+	addAchievementToRotation(achievement);
+
+	// Progress instantáneo
+	const percentage =
+		Math.round(
+		(data.achieved / data.total) * 100
+		);
+
+	state.progressPct =
+		percentage;
+
+	document.getElementById(
+		"achvCount"
+	).textContent =
+		`${data.achieved}/${data.total}`;
+
+	document.getElementById(
+		"progressFill"
+	).style.width =
+		`${percentage}%`;
+
+	document.getElementById(
+		"progressPercent"
+	).textContent =
+		`${percentage}%`;
+
+	if (!waitingForUnlockSequence) {
+		waitingForUnlockSequence =
+		true;
+
+		handleNewAchievement();
+	}
+
+	setTimeout(
+		updateWidget,
+		1000
+	);
+});
 
 /* =========================
    UPDATE WIDGET
 ========================= */
 
+let widgetUpdating = false;
+
+function refreshAchievementDisplay() {
+  achievementIndex = 0;
+
+  if (!achievementQueue.length) {
+    stopAchievementRotation();
+    return;
+  }
+
+  showAchievement(0);
+
+  if (achievementQueue.length > 1) {
+    trophyLabel.textContent = "Latest Achievements";
+    startAchievementRotation();
+  } else {
+    trophyLabel.textContent = "Latest Achievement";
+    stopAchievementRotation();
+  }
+}
+
+function achievementKey(ach) {
+	return String(
+		ach?.id ??
+		`${ach?.name}|${ach?.image}`
+	);
+}
+
+function extractIds(list = []) {
+  	return list.map(achievementKey);
+}
+
 async function updateWidget() {
+	if (widgetUpdating) {
+		return;
+	}
 
-  if(!steamid || !steamkey){
-    console.error("Falto el Steam ID o Steam Web Key");
-    return;
-  }
+	widgetUpdating = true;
 
-  const res = await fetch(`${baseUrl}/api/steam/achievements?steamid=${steamid}&steamkey=${steamkey}&numeroLogros=${numeroLogros}&language=${language}`);
-  const data = await res.json();
+	try {
+		if (!steamid || !steamkey) {
+		console.error("Falto el Steam ID o Steam Web Key");
+		return;
+		}
 
-  console.debug("DATA:", data);
-  
-  const theWholeDamnData = {
-    gameName: data?.game?.name ?? "",
-    achievementsList: data?.blockedAchievementsData ?? [],
-    numeroLogros,
-    updatedAt: Date.now()
-  };
+		let data;
 
-  const currentRaw = localStorage.getItem(DOCK_DATA_KEY); 
-  const current = currentRaw ? JSON.parse(currentRaw) : null;
+		try {
+		const res = await fetch(
+			`${baseUrl}/api/steam/achievements?steamid=${steamid}&steamkey=${steamkey}&numeroLogros=${numeroLogros}&language=${language}`
+		);
 
-  if (!current || current.gameName !== theWholeDamnData.gameName) {
-    localStorage.setItem(DOCK_DATA_KEY, JSON.stringify(theWholeDamnData));
-  }
+		data = await res.json();
+		} catch (err) {
+		console.error("Error consultando Steam API:", err);
+		return;
+		}
 
-  const last = data.lastAchievements || [];
-  const newlyUnlocked = [];
+		console.debug("DATA:", data);
 
-  if(!hasBootstrappedAchievements){
-    for(const ach of last){
-      if(ach?.id){
-        knownAchievementIds.add(ach.id);
-      }
-    }
+		const theWholeDamnData = {
+			appid: data?.game?.id,
+			gameName: data?.game?.name ?? "",
+			achievementsList: data?.blockedAchievementsData ?? [],
+			numeroLogros,
+			updatedAt: Date.now()
+		};
 
-    localStorage.setItem(
-      STORAGE_KEY, 
-      JSON.stringify([...knownAchievementIds])
-    );
+		const currentRaw = localStorage.getItem(DOCK_DATA_KEY);
 
-    hasBootstrappedAchievements = true;
+		const current =
+		currentRaw
+			? JSON.parse(currentRaw)
+			: null;
 
-  }else{
-    for(const ach of last){
-      if(ach?.id && !knownAchievementIds.has(ach.id)){
-        knownAchievementIds.add(ach.id);
-        newlyUnlocked.push(ach);
-      }
-    }
+		if (
+		!current ||
+		current.gameName !== theWholeDamnData.gameName
+		) {
+		localStorage.setItem(
+			DOCK_DATA_KEY,
+			JSON.stringify(theWholeDamnData)
+		);
+		}
 
-    if(newlyUnlocked.length){
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify([...knownAchievementIds])
-      );
-    }
-  }
+		/* =========================
+		ACTIVE / IDLE STATE
+		========================= */
 
-  /* =========================
-     ACTIVE / IDLE STATE
-  ========================= */
+		if (!data.active) {
+		if (state.active !== false) {
+			state.active = false;
 
-  if (!data.active) {
-    if (state.active !== false) {
-      state.active = false;
+			card.style.setProperty(
+			"--card-bg-image",
+			"none"
+			);
 
-      card.style.setProperty("--card-bg-image", "none");
-      widgetContent.classList.remove("show");
+			widgetContent.classList.remove("show");
 
-      setTimeout(() => {
-        widgetContent.style.display = "none";
-        hideTrackedAchievement();
-        standbyContainer.style.opacity = 1;
-        standbyText.textContent = data.message || "Ready to Monitor";
-      }, 500);
-    }
-    return;
-  }
+			setTimeout(() => {
+			widgetContent.style.display = "none";
+			hideTrackedAchievement();
+			standbyContainer.style.opacity = 1;
+			standbyText.textContent =
+				data.message ||
+				"Ready to Monitor";
+			}, 500);
+		}
 
-  if (state.active !== true) {
-    state.active = true;
-    standbyContainer.style.opacity = 0;
-    widgetContent.style.display = "flex";
-    requestAnimationFrame(() => widgetContent.classList.add("show"));
-  }
+		return;
+		}
 
-  /* =========================
-   OVERLAY STATE
-  ========================= */
+		if (state.active !== true) {
+		state.active = true;
 
-  updateOverlayState();
+		standbyContainer.style.opacity = 0;
+		widgetContent.style.display = "flex";
 
-  /* =========================
-  GAME DATA
-  ========================= */
+		requestAnimationFrame(() =>
+			widgetContent.classList.add("show")
+		);
+		}
 
-  if (data.game.image !== state.gameImage) {
-    state.gameImage = data.game.image;
-    card.style.setProperty("--card-bg-image", `url("${state.gameImage}")`);
-  }
+		updateOverlayState();
 
-  if (data.game.name !== state.gameName) {
-    state.gameName = data.game.name;
-    document.getElementById("gameName").textContent = state.gameName;
+		/* =========================
+		GAME DATA
+		========================= */
 
-    if (allowSb) {
-      cambiarCategoria(state.gameName);
-    }
-  }
+		if (data.game.image !== state.gameImage) {
+		state.gameImage = data.game.image;
 
-  document.getElementById("timePlayed").textContent = data.game.timePlayed;
+		card.style.setProperty(
+			"--card-bg-image",
+			`url("${state.gameImage}")`
+		);
+		}
 
-  /* =========================
-     PROGRESS
-  ========================= */
+		const currentAppId = data?.game?.id;
 
-  if (data.progress.percentage !== state.progressPct) {
-    state.progressPct = data.progress.percentage;
+		if (
+		currentAppId &&
+		currentAppId !== state.appid
+		) {
+		state.appid = currentAppId;
 
-    document.getElementById("achvCount").textContent =
-      `${data.progress.desbloqueado}/${data.progress.total}`;
+		enviarAppIdSteam(state.appid);
+		}
 
-    document.getElementById("progressFill").style.width =
-      `${data.progress.percentage}%`;
+		if (
+		data.game.name !== state.gameName
+		) {
+		state.gameName = data.game.name;
 
-    document.getElementById("progressPercent").textContent =
-      `${data.progress.percentage}%`;
-  }
+		document.getElementById(
+			"gameName"
+		).textContent =
+			state.gameName;
 
-   /* =========================
-     UNLOCK QUEUE
-  ========================= */
+		if (allowSb) {
+			cambiarCategoria(
+			state.gameName
+			);
+		}
+		}
 
-  if (newlyUnlocked.length) {
-    unlockQueue.push(...newlyUnlocked);
+		document.getElementById(
+		"timePlayed"
+		).textContent =
+		data.game.timePlayed;
 
-    if (!waitingForUnlockSequence) {
-      waitingForUnlockSequence = true;
-      handleNewAchievement();
-    }
-  }
+		/* =========================
+		PROGRESS
+		========================= */
 
-  /* =========================
-     LAST ACHIEVEMENTS ROTATION
-  ========================= */
+		if (
+		data.progress.percentage !==
+		state.progressPct
+		) {
+		state.progressPct =
+			data.progress.percentage;
 
-  const newQueue = data.lastAchievements || [];
-  const newIds = extractIds(newQueue);
+		document.getElementById(
+			"achvCount"
+		).textContent =
+			`${data.progress.desbloqueado}/${data.progress.total}`;
 
-  const changed = !arraysEqual(newIds, state.lastAchievementsIds);
+		document.getElementById(
+			"progressFill"
+		).style.width =
+			`${data.progress.percentage}%`;
 
-  if (changed) {
-    state.lastAchievementsIds = newIds;
-    achievementQueue = newQueue;
+		document.getElementById(
+			"progressPercent"
+		).textContent =
+			`${data.progress.percentage}%`;
+		}
 
-    if(!unlockQueue.length && !unlockPlaying){
-      startHideAfter();
-    }
+		/* =========================
+		LAST ACHIEVEMENTS
+		========================= */
 
-    if (achievementQueue.length > 1) {
-      trophyLabel.textContent = "Latest Achievements";
-      startAchievementRotation();
-    } else {
-      trophyLabel.textContent = "Latest Achievement";
-      stopAchievementRotation();
-      showAchievement(0);
-    }
-  }
+		const newQueue =
+		data.lastAchievements || [];
 
+		const newIds =
+		extractIds(newQueue);
+
+		const changed =
+		!arraysEqual(
+			newIds,
+			state.lastAchievementsIds
+		);
+
+		if (changed) {
+		state.lastAchievementsIds =
+			newIds;
+
+		const merged = [
+			...achievementQueue,
+			...newQueue
+		];
+
+		const unique = [];
+
+		for (const ach of merged) {
+			if (!unique.some(x => String(x.id) === String(ach.id))) {
+				unique.push(ach);
+			}
+		}
+
+		achievementQueue = unique.slice(0, numeroLogros);
+
+		if (
+			!unlockQueue.length &&
+			!unlockPlaying
+		) {
+			startHideAfter();
+		}
+
+		console.log(
+			"API Queue:",
+			newQueue.map(a => a.name)
+		);
+
+		refreshAchievementDisplay();
+		}
+	}
+	finally {
+		widgetUpdating = false;
+	}
 }
 
 /* =========================
@@ -385,6 +509,34 @@ function stopAchievementRotation() {
   }
 }
 
+function addAchievementToRotation(achievement) {
+	achievementQueue = [
+		achievement,
+		...achievementQueue.filter(
+		a =>
+			achievementKey(a) !==
+			achievementKey(
+			achievement
+			)
+		)
+	].slice(0, numeroLogros);
+
+	state.lastAchievementsIds =
+		extractIds(
+		achievementQueue
+		);
+
+	refreshAchievementDisplay();
+
+	console.log(
+		"WS Queue:",
+		achievementQueue.map(
+			a => a.name
+		)
+	);
+
+}
+
 /* =========================
    STREAMERBOT
 ========================= */
@@ -405,6 +557,29 @@ function limpiarNombreJuego(nombre) {
     .replace(/[^a-zA-Z0-9 :']/g, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+async function enviarAppIdSteam(appid) {
+  if (!allowSb || !sbConnect || !appid) {
+    return;
+  }
+
+  try {
+    await client.doAction(
+      { name: "get app id" },
+      { appid: String(appid) }
+    );
+
+    console.debug(
+      "[STEAM] AppID enviado a Streamer.bot:",
+      appid
+    );
+  } catch (err) {
+    console.error(
+      "Error enviando AppID a Streamer.bot:",
+      err
+    );
+  }
 }
 
 
