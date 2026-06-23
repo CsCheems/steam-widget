@@ -198,8 +198,6 @@ async function updateWidget() {
 			updatedAt: 		Date.now()
 		};
 
-		console.log("TODA LA DATA PRRO: ", theWholeDamnData);
-
 		const currentRaw =
 			localStorage.getItem(
 				DOCK_DATA_KEY
@@ -487,8 +485,6 @@ function handleAchievementUnlocked(data) {
 
 function handleAchievementHistory(data) {
 
-	console.log("ACHIEVEVEMENT HISTORY: ",data);
-
 	achievementQueue =
 		(data.achievements ?? [])
 		.slice(0, numeroLogros);
@@ -535,12 +531,6 @@ function handleAchievementHistory(data) {
 		startHideAfter();
 	}
 
-	console.log(
-		"History Queue:",
-		achievementQueue.map(
-		a => a.name
-		)
-	);
 }
 
 /* =========================
@@ -606,20 +596,32 @@ function darkenColor({ r, g, b }, factor = 0.25) {
 	};
 }
 
+function mixWithBlack({ r, g, b }, amount) {
+		return {
+			r: Math.round(r * (1 - amount)),
+			g: Math.round(g * (1 - amount)),
+			b: Math.round(b * (1 - amount))
+		};
+}
+
+function brightenColor({ r, g, b }, amount = 0.5) {
+	return {
+		r: Math.round(r + (255 - r) * amount),
+		g: Math.round(g + (255 - g) * amount),
+		b: Math.round(b + (255 - b) * amount)
+	};
+}
+
 function applyColorTheme({ r, g, b }) {
 	const root = document.documentElement;
 
-	const dark1 = {
-		r: Math.round(r * 0.18),
-		g: Math.round(g * 0.18),
-		b: Math.round(b * 0.18)
-	};
+	const dark1 = mixWithBlack({ r, g, b }, 0.60);
+	const dark2 = mixWithBlack({ r, g, b }, 0.35);
 
-	const dark2 = {
-		r: Math.round(r * 0.35),
-		g: Math.round(g * 0.35),
-		b: Math.round(b * 0.35)
-	};
+	const progressColor = brightenColor(
+		{ r, g, b },
+		0.3
+	);
 
 	root.style.setProperty(
 		"--card-bg",
@@ -633,11 +635,15 @@ function applyColorTheme({ r, g, b }) {
 	root.style.setProperty(
 		"--progress-fill",
 		`linear-gradient(
-		90deg,
-		rgb(${r},${g},${b}),
-		rgb(${Math.min(r + 40, 255)},
-			${Math.min(g + 40, 255)},
-			${Math.min(b + 40, 255)})
+			90deg,
+			rgb(${progressColor.r},
+				${progressColor.g},
+				${progressColor.b}),
+			rgb(
+				${Math.min(progressColor.r + 30, 255)},
+				${Math.min(progressColor.g + 30, 255)},
+				${Math.min(progressColor.b + 30, 255)}
+			)
 		)`
 	);
 
@@ -659,7 +665,6 @@ function applyColorTheme({ r, g, b }) {
 ========================= */
 
 function useApiDataFallback(data){
-	console.log(data);
 
 	achievementQueue =(data.lastestAch ?? []).slice(0, numeroLogros);
 
@@ -680,13 +685,6 @@ function useApiDataFallback(data){
 	if (!unlockQueue.length && !unlockPlaying) {
 		startHideAfter();
 	}
-
-	console.log(
-		"History Queue:",
-		achievementQueue.map(
-		a => a.name
-		)
-	);
 }
 
 /* =========================
