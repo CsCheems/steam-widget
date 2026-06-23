@@ -6,12 +6,13 @@
 const urlSearch = window.location.search;
 const params = new URLSearchParams(urlSearch);
 
-let numeroLogros = Number(params.get("numeroLogros") || 3);
+let numeroLogros = Number(params.get("numeroLogros") || 5);
 //Si el usuario coloca en el url un numero mayor al que se muestra en el menu, se usara el valor predeterminado de 3
 if(numeroLogros > 5 || numeroLogros <= 0){
   numeroLogros = 3;
 }
-const allowSb = obtenerBoolean("allowSb", true);
+
+const allowSb = obtenerBoolean("allowSb", false);
 const StreamerbotAdress = params.get("hostInput") || "127.0.0.1";
 const StreamerbotPort = params.get("portInput") || "8080";
 const steamid = params.get("steam_id") || window.ENV_STEAM_ID;
@@ -55,6 +56,7 @@ let lastUnlockId = null;
 let pendingHideTimeout = null;
 let waitingForUnlockSequence = false;
 let currentOverlay = "normal";
+let isReload = true;
 
 
 const DOCK_DATA_KEY = "steam_widget_dock_data";
@@ -76,9 +78,6 @@ const state = {
     lastAchievementsIds: []
   };
 
-function extractIds(list = []) {
-  return list.map(a => a.id ?? `${a.name}|${a.image}`);
-}
 
 function arraysEqual(a = [], b = []) {
   if (a.length !== b.length) return false;
@@ -107,58 +106,19 @@ const client = new StreamerbotClient({
 client.on("General.Custom", (response) => {
 	const data = response?.data;
 
-	if (data?.type !== "steam_achievement") {
+	if (!data?.type) {
 		return;
 	}
 
-	const achievement = {
-		id: String(data.eventId),
-		name: data.name,
-		description: data.description,
-		image: data.image
-	};
+	switch (data.type) {
+		case "steam_achievement_history":
+			handleAchievementHistory(data);
+			break;
 
-	// Overlay
-	unlockQueue.push(achievement);
-
-	// Rotación
-	addAchievementToRotation(achievement);
-
-	// Progress instantáneo
-	const percentage =
-		Math.round(
-		(data.achieved / data.total) * 100
-		);
-
-	state.progressPct =
-		percentage;
-
-	document.getElementById(
-		"achvCount"
-	).textContent =
-		`${data.achieved}/${data.total}`;
-
-	document.getElementById(
-		"progressFill"
-	).style.width =
-		`${percentage}%`;
-
-	document.getElementById(
-		"progressPercent"
-	).textContent =
-		`${percentage}%`;
-
-	if (!waitingForUnlockSequence) {
-		waitingForUnlockSequence =
-		true;
-
-		handleNewAchievement();
+		case "steam_achievement":
+			handleAchievementUnlocked(data);
+			break;
 	}
-
-	setTimeout(
-		updateWidget,
-		1000
-	);
 });
 
 /* =========================
@@ -168,22 +128,22 @@ client.on("General.Custom", (response) => {
 let widgetUpdating = false;
 
 function refreshAchievementDisplay() {
-  achievementIndex = 0;
+	achievementIndex = 0;
 
-  if (!achievementQueue.length) {
-    stopAchievementRotation();
-    return;
-  }
+	if (!achievementQueue.length) {
+		stopAchievementRotation();
+		return;
+	}
 
-  showAchievement(0);
+	showAchievement(0);
 
-  if (achievementQueue.length > 1) {
-    trophyLabel.textContent = "Latest Achievements";
-    startAchievementRotation();
-  } else {
-    trophyLabel.textContent = "Latest Achievement";
-    stopAchievementRotation();
-  }
+	if (achievementQueue.length > 1) {
+		trophyLabel.textContent = "Latest Achievements";
+		startAchievementRotation();
+	} else {
+		trophyLabel.textContent = "Latest Achievement";
+		stopAchievementRotation();
+	}
 }
 
 function achievementKey(ach) {
@@ -198,6 +158,7 @@ function extractIds(list = []) {
 }
 
 async function updateWidget() {
+
 	if (widgetUpdating) {
 		return;
 	}
@@ -206,215 +167,162 @@ async function updateWidget() {
 
 	try {
 		if (!steamid || !steamkey) {
-		console.error("Falto el Steam ID o Steam Web Key");
-		return;
+			console.error("Steam ID o Steam Web Key Missing");
+			return;
 		}
 
 		let data;
 
 		try {
-		const res = await fetch(
-			`${baseUrl}/api/steam/achievements?steamid=${steamid}&steamkey=${steamkey}&numeroLogros=${numeroLogros}&language=${language}`
-		);
+			const res = await fetch(
+				`${baseUrl}/api/steam/achievements?steamid=${steamid}&steamkey=${steamkey}&numeroLogros=${numeroLogros}&language=${language}`
+			);
 
-		data = await res.json();
+			data = await res.json();
 		} catch (err) {
-		console.error("Error consultando Steam API:", err);
-		return;
+			console.error("Error reaching STEAM API:", err);
+			return;
 		}
 
-		console.debug("DATA:", data);
-
 		const theWholeDamnData = {
-			appid: data?.game?.id,
-			gameName: data?.game?.name ?? "",
-			achievementsList: data?.blockedAchievementsData ?? [],
+			appid: 			data?.game?.id,
+			image: 			data?.game?.image,
+			time: 			data?.game?.timePlayed,
+			gameName: 		data?.game?.name ?? "",
+			lastestAch: 	data?.lastAchievements,
+			newAch: 		data?.newAchievements,
+			unlockedAch: 	data?.progress?.desbloqueado,
+			percentageAch: 	data?.progress?.percentage,
+			totalAch: 		data?.progress?.total,
 			numeroLogros,
-			updatedAt: Date.now()
+			updatedAt: 		Date.now()
 		};
 
-		const currentRaw = localStorage.getItem(DOCK_DATA_KEY);
+		console.log("TODA LA DATA PRRO: ", theWholeDamnData);
 
-		const current =
-		currentRaw
-			? JSON.parse(currentRaw)
-			: null;
+		const currentRaw =
+			localStorage.getItem(
+				DOCK_DATA_KEY
+			);
 
-		if (
-		!current ||
-		current.gameName !== theWholeDamnData.gameName
-		) {
-		localStorage.setItem(
-			DOCK_DATA_KEY,
-			JSON.stringify(theWholeDamnData)
-		);
+		const current =	currentRaw ? JSON.parse(currentRaw) : null;
+
+		if (!current || current.gameName !== theWholeDamnData.gameName) {
+			localStorage.setItem(DOCK_DATA_KEY, JSON.stringify(theWholeDamnData));
 		}
 
 		/* =========================
-		ACTIVE / IDLE STATE
+		ACTIVE / IDLE
 		========================= */
 
 		if (!data.active) {
-		if (state.active !== false) {
-			state.active = false;
+			if (state.active !== false) {
+				state.active = false;
 
-			card.style.setProperty(
-			"--card-bg-image",
-			"none"
-			);
+				card.style.setProperty( "--card-bg-image", "none");
 
-			widgetContent.classList.remove("show");
+				widgetContent.classList.remove("show");
 
-			setTimeout(() => {
-			widgetContent.style.display = "none";
-			hideTrackedAchievement();
-			standbyContainer.style.opacity = 1;
-			standbyText.textContent =
-				data.message ||
-				"Ready to Monitor";
-			}, 500);
-		}
+				setTimeout(() => {
+					widgetContent.style.display =
+						"none";
 
-		return;
+					hideTrackedAchievement();
+
+					standbyContainer.style.opacity =
+						1;
+
+					standbyText.textContent =
+						data.message ??
+						"Ready to Monitor";
+				}, 500);
+			}
+			return;
 		}
 
 		if (state.active !== true) {
-		state.active = true;
+			state.active = true;
 
-		standbyContainer.style.opacity = 0;
-		widgetContent.style.display = "flex";
+			standbyContainer.style.opacity = 0;
 
-		requestAnimationFrame(() =>
-			widgetContent.classList.add("show")
-		);
+			widgetContent.style.display = "flex";
+
+			requestAnimationFrame(() => widgetContent.classList.add("show"));
 		}
 
 		updateOverlayState();
 
 		/* =========================
-		GAME DATA
+		GAME IMAGE
 		========================= */
 
-		if (data.game.image !== state.gameImage) {
-		state.gameImage = data.game.image;
+		if (theWholeDamnData.image !== state.gameImage) {
 
-		card.style.setProperty(
-			"--card-bg-image",
-			`url("${state.gameImage}")`
-		);
-		}
+			state.gameImage = theWholeDamnData.image;
 
-		const currentAppId = data?.game?.id;
+			card.style.setProperty("--card-bg-image", `url("${state.gameImage}")`);
 
-		if (
-		currentAppId &&
-		currentAppId !== state.appid
-		) {
-		state.appid = currentAppId;
-
-		enviarAppIdSteam(state.appid);
-		}
-
-		if (
-		data.game.name !== state.gameName
-		) {
-		state.gameName = data.game.name;
-
-		document.getElementById(
-			"gameName"
-		).textContent =
-			state.gameName;
-
-		if (allowSb) {
-			cambiarCategoria(
-			state.gameName
-			);
-		}
-		}
-
-		document.getElementById(
-		"timePlayed"
-		).textContent =
-		data.game.timePlayed;
-
-		/* =========================
-		PROGRESS
-		========================= */
-
-		if (
-		data.progress.percentage !==
-		state.progressPct
-		) {
-		state.progressPct =
-			data.progress.percentage;
-
-		document.getElementById(
-			"achvCount"
-		).textContent =
-			`${data.progress.desbloqueado}/${data.progress.total}`;
-
-		document.getElementById(
-			"progressFill"
-		).style.width =
-			`${data.progress.percentage}%`;
-
-		document.getElementById(
-			"progressPercent"
-		).textContent =
-			`${data.progress.percentage}%`;
+			extractAccentColor(state.gameImage)
+				.then(applyColorTheme);
 		}
 
 		/* =========================
-		LAST ACHIEVEMENTS
+		APP ID
 		========================= */
 
-		const newQueue =
-		data.lastAchievements || [];
+		const currentAppId = theWholeDamnData.appid;
 
-		const newIds =
-		extractIds(newQueue);
+		if (currentAppId && currentAppId !== state.appid) {
+			state.appid = currentAppId;
 
-		const changed =
-		!arraysEqual(
-			newIds,
-			state.lastAchievementsIds
-		);
+			achievementQueue = [];
+			unlockQueue = [];
 
-		if (changed) {
-		state.lastAchievementsIds =
-			newIds;
+			stopAchievementRotation();
 
-		const merged = [
-			...achievementQueue,
-			...newQueue
-		];
+			trophyLabel.textContent =
+				"Latest Achievement";
 
-		const unique = [];
+			document.getElementById(
+				"trophyName"
+			).textContent =
+				"Loading achievements...";
 
-		for (const ach of merged) {
-			if (!unique.some(x => String(x.id) === String(ach.id))) {
-				unique.push(ach);
+			document.querySelector(
+				".trophyimg"
+			).style.display =
+				"none";
+
+			if(!sbConnect){
+				useApiDataFallback(theWholeDamnData);
+			}
+
+			enviarAppIdSteam(theWholeDamnData.appid, isReload);
+
+			isReload = false;
+			
+		}
+
+		/* =========================
+		GAME NAME
+		========================= */
+
+		if (theWholeDamnData.gameName !== state.gameName) {
+			state.gameName =theWholeDamnData.gameName;
+
+			document.getElementById("gameName").textContent = state.gameName;
+
+			if (allowSb) {
+				cambiarCategoria(state.gameName);
 			}
 		}
 
-		achievementQueue = unique.slice(0, numeroLogros);
+		/* =========================
+		TIME PLAYED
+		========================= */
 
-		if (
-			!unlockQueue.length &&
-			!unlockPlaying
-		) {
-			startHideAfter();
-		}
-
-		console.log(
-			"API Queue:",
-			newQueue.map(a => a.name)
-		);
-
-		refreshAchievementDisplay();
-		}
-	}
-	finally {
+		document.getElementById("timePlayed").textContent = theWholeDamnData.time;
+	} finally {
 		widgetUpdating = false;
 	}
 }
@@ -537,6 +445,250 @@ function addAchievementToRotation(achievement) {
 
 }
 
+function handleAchievementUnlocked(data) {
+	const achievement = {
+		id: String(data.eventId),
+		name: data.name,
+		description: data.description,
+		image: data.image
+	};
+
+	unlockQueue.push(achievement);
+
+	addAchievementToRotation(achievement);
+
+	const percentage =
+		Math.round(
+		(data.achieved / data.total) * 100
+		);
+
+	state.progressPct = percentage;
+
+	document.getElementById(
+		"achvCount"
+	).textContent =
+		`${data.achieved}/${data.total}`;
+
+	document.getElementById(
+		"progressFill"
+	).style.width =
+		`${percentage}%`;
+
+	document.getElementById(
+		"progressPercent"
+	).textContent =
+		`${percentage}%`;
+
+	if (!waitingForUnlockSequence) {
+		waitingForUnlockSequence = true;
+		handleNewAchievement();
+	}
+}
+
+function handleAchievementHistory(data) {
+
+	console.log("ACHIEVEVEMENT HISTORY: ",data);
+
+	achievementQueue =
+		(data.achievements ?? [])
+		.slice(0, numeroLogros);
+
+	state.lastAchievementsIds =
+		extractIds(
+		achievementQueue
+		);
+
+	if (
+		typeof data.achievedUnlocked === "number" &&
+		typeof data.totalAchievements === "number"
+	) {
+		const percentage =
+		Math.round(
+			(data.achievedUnlocked / data.totalAchievements) * 100
+		);
+
+		state.progressPct =
+		percentage;
+
+		document.getElementById(
+		"achvCount"
+		).textContent =
+		`${data.achievedUnlocked}/${data.totalAchievements}`;
+
+		document.getElementById(
+		"progressFill"
+		).style.width =
+		`${percentage}%`;
+
+		document.getElementById(
+		"progressPercent"
+		).textContent =
+		`${percentage}%`;
+	}
+
+	refreshAchievementDisplay();
+
+	if (
+		!unlockQueue.length &&
+		!unlockPlaying
+	) {
+		startHideAfter();
+	}
+
+	console.log(
+		"History Queue:",
+		achievementQueue.map(
+		a => a.name
+		)
+	);
+}
+
+/* =========================
+   COLOR EXTRACTION
+========================= */
+
+async function extractAccentColor(imageUrl) {
+	return new Promise((resolve) => {
+		const img = new Image();
+		img.crossOrigin = "anonymous";
+
+		img.onload = () => {
+		const canvas = document.createElement("canvas");
+		canvas.width = 64;
+		canvas.height = 40;
+
+		const ctx = canvas.getContext("2d");
+		ctx.drawImage(img, 0, 0, 64, 40);
+
+		const { data } = ctx.getImageData(0, 0, 64, 40);
+
+		let bestColor = null;
+		let bestScore = -1;
+
+		for (let i = 0; i < data.length; i += 4) {
+			const r = data[i];
+			const g = data[i + 1];
+			const b = data[i + 2];
+			const a = data[i + 3];
+
+			if (a < 200) continue;
+
+			const max = Math.max(r, g, b) / 255;
+			const min = Math.min(r, g, b) / 255;
+
+			const l = (max + min) / 2;
+			const s =
+			max === min
+				? 0
+				: (max - min) / (1 - Math.abs(2 * l - 1));
+
+			const score = s * (1 - Math.abs(l - 0.45));
+
+			if (score > bestScore) {
+			bestScore = score;
+			bestColor = { r, g, b };
+			}
+		}
+
+		resolve(bestColor || { r: 45, g: 115, b: 211 });
+		};
+
+		img.onerror = () => resolve({ r: 45, g: 115, b: 211 });
+		img.src = imageUrl;
+	});
+}
+
+function darkenColor({ r, g, b }, factor = 0.25) {
+	return {
+		r: Math.round(r * factor),
+		g: Math.round(g * factor),
+		b: Math.round(b * factor)
+	};
+}
+
+function applyColorTheme({ r, g, b }) {
+	const root = document.documentElement;
+
+	const dark1 = {
+		r: Math.round(r * 0.18),
+		g: Math.round(g * 0.18),
+		b: Math.round(b * 0.18)
+	};
+
+	const dark2 = {
+		r: Math.round(r * 0.35),
+		g: Math.round(g * 0.35),
+		b: Math.round(b * 0.35)
+	};
+
+	root.style.setProperty(
+		"--card-bg",
+		`linear-gradient(
+		135deg,
+		rgb(${dark1.r},${dark1.g},${dark1.b}) 0%,
+		rgb(${dark2.r},${dark2.g},${dark2.b}) 100%
+		)`
+	);
+
+	root.style.setProperty(
+		"--progress-fill",
+		`linear-gradient(
+		90deg,
+		rgb(${r},${g},${b}),
+		rgb(${Math.min(r + 40, 255)},
+			${Math.min(g + 40, 255)},
+			${Math.min(b + 40, 255)})
+		)`
+	);
+
+	root.style.setProperty(
+		"--shadow-main",
+		`8px 8px 12px rgba(${r},${g},${b},0.45)`
+	);
+
+	root.style.setProperty(
+		"--divider-color",
+		`rgba(${r},${g},${b},0.35)`
+	);
+}
+
+
+
+/* =========================
+   API FALLBACK
+========================= */
+
+function useApiDataFallback(data){
+	console.log(data);
+
+	achievementQueue =(data.lastestAch ?? []).slice(0, numeroLogros);
+
+	state.lastAchievementsIds = extractIds(achievementQueue);
+
+	const percentage = data.percentageAch;
+
+	state.progressPct = percentage;
+
+	document.getElementById("progressFill").style.width = `${percentage}`;
+
+	document.getElementById("achvCount").textContent = `${data.unlockedAch}/${data.totalAch}`;
+
+	document.getElementById("progressPercent").textContent = `${percentage}%`;
+
+	refreshAchievementDisplay();
+
+	if (!unlockQueue.length && !unlockPlaying) {
+		startHideAfter();
+	}
+
+	console.log(
+		"History Queue:",
+		achievementQueue.map(
+		a => a.name
+		)
+	);
+}
+
 /* =========================
    STREAMERBOT
 ========================= */
@@ -559,29 +711,32 @@ function limpiarNombreJuego(nombre) {
     .trim();
 }
 
-async function enviarAppIdSteam(appid) {
-  if (!allowSb || !sbConnect || !appid) {
-    return;
-  }
+async function enviarAppIdSteam(appid, isReload) {
+	console.log(appid);
+	if (!sbConnect || !appid) {
+		return;
+	}
 
-  try {
-    await client.doAction(
-      { name: "get app id" },
-      { appid: String(appid) }
-    );
+	try {
+		await client.doAction(
+			{ name: "get app id" },
+			{ 
+				appid: String(appid),
+				action: isReload 
+			}
+		);
 
-    console.debug(
-      "[STEAM] AppID enviado a Streamer.bot:",
-      appid
-    );
-  } catch (err) {
-    console.error(
-      "Error enviando AppID a Streamer.bot:",
-      err
-    );
-  }
+		console.debug(
+			"[STEAM] AppID enviado a Streamer.bot:",
+			appid
+		);
+	} catch (err) {
+			console.error(
+			"Error enviando AppID a Streamer.bot:",
+			err
+		);
+	}
 }
-
 
 /* =========================
    HELPERS
@@ -662,29 +817,29 @@ function mostrarSiguiente() {
 ========================= */
 
 function getTrackedConfig() {
-  try {
-    const raw = localStorage.getItem(TRACKED_CONFIG_KEY);
-    const parsed = raw ? JSON.parse(raw) : null;
-    return parsed;
-  } catch (err) {
-    return null;
-  }
+	try {
+		const raw = localStorage.getItem(TRACKED_CONFIG_KEY);
+		const parsed = raw ? JSON.parse(raw) : null;
+		return parsed;
+	} catch (err) {
+		return null;
+	}
 }
 
 
 function renderTrackedAchievement(tracked) {
-  const overlay = document.getElementById("trackingOverlay");
+	const overlay = document.getElementById("trackingOverlay");
 
-  document.getElementById("trackingTitle").textContent = tracked.name;
-  document.getElementById("trackingDesc").textContent = tracked.description || "Hidden achievements don't have descriptions";
-  document.getElementById("trackingImage").src = tracked.image;
+	document.getElementById("trackingTitle").textContent = tracked.name;
+	document.getElementById("trackingDesc").textContent = tracked.description || "Hidden achievements don't have descriptions";
+	document.getElementById("trackingImage").src = tracked.image;
 
-  overlay.style.opacity = 1;
+	overlay.style.opacity = 1;
 }
 
 function hideTrackedAchievement() {
-  const overlay = document.getElementById("trackingOverlay");
-  overlay.style.opacity = 0;
+	const overlay = document.getElementById("trackingOverlay");
+	overlay.style.opacity = 0;
 }
 
 /* =========================
@@ -692,31 +847,35 @@ function hideTrackedAchievement() {
 ========================= */
 
 function updateOverlayState(){
-  const tracked = getTrackedConfig();
+	const tracked = getTrackedConfig();
 
-  if(unlockPlaying || unlockQueue.length > 0){
-    currentOverlay = "unlock";
-    widgetContent.style.display = "none";
-    hideTrackedAchievement();
-    return;
-  }
+	if(unlockPlaying || unlockQueue.length > 0){
+		currentOverlay = "unlock";
+		widgetContent.style.display = "none";
+		hideTrackedAchievement();
+		return;
+	}
 
-  if(tracked?.enabled){
-    currentOverlay = "tracked";
-    widgetContent.style.display = "none";
-    renderTrackedAchievement(tracked);
-    return;
-  }
+	if(tracked?.enabled){
+		currentOverlay = "tracked";
+		widgetContent.style.display = "none";
+		renderTrackedAchievement(tracked);
+		return;
+	}
 
-  currentOverlay = "normal";
-  hideTrackedAchievement();
-  widgetContent.style.display = "flex";
+	currentOverlay = "normal";
+	hideTrackedAchievement();
+	widgetContent.style.display = "flex";
 }
 
 /* =========================
    INTERVAL
 ========================= */
 
-setInterval(updateWidget, 10000);
+setInterval(updateWidget, 6000);
 updateWidget();
 
+window.addEventListener('DOMContentLoaded', () => {
+    console.log("La aplicación se ha iniciado o reiniciado. Limpiando Streamer.bot...");
+    isReload = true;
+});

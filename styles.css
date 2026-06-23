@@ -432,7 +432,7 @@ p, span {
 }
 
 .achv-count {
-  font-size: 1.7em;
+  font-size: 1.4em;
   font-weight: 700;
   color: var(--text-muted);
 }
@@ -472,7 +472,7 @@ p, span {
 .divider {
   width: 2px;
   height: 128px;
-  background: rgba(255,255,255,0.15);
+  background: var(--divider-color, rgba(255,255,255,0.15));
 }
 
 /* =========================
