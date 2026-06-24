@@ -1,6 +1,7 @@
 
 const DOCK_DATA_KEY = "steam_widget_dock_data";
 const TRACKED_CONFIG_KEY = "steam_widget_tracked_config";
+const GAME_NAME_OVERRIDE_KEY = "steam_widget_game_name_override";
 
 window.uiReady = new Promise((resolve) => {
   window.__resolveUIReady = resolve;
@@ -128,29 +129,22 @@ function renderField(field) {
     return wrap;
   }
 
-  if (field.type === "range") {
-      const range = document.createElement("input");
-      range.type = "range";
-      range.className = "range";
-      range.min = field.min;
-      range.max = field.max;
-      range.step = field.step ?? 1;
-      range.value = state[field.id];
+  if (field.type === "button") {
+    const btn = document.createElement("button");
+    btn.id = "saveBtnId";
+    btn.textContent = "Update Name";
+    btn.className = "saveBtn";
 
-      const valuePill = document.createElement("span");
-      valuePill.className = "pill";
-      valuePill.textContent = `${range.value}${field.suffix ?? ""}`;
+    btn.addEventListener("click", saveGameName);
 
-      range.addEventListener("input", () => {
-      state[field.id] = Number(range.value);
-      valuePill.textContent = `${range.value}${field.suffix ?? ""}`;
-      refreshPreview();
-      });
+    const buttonWrap = document.createElement("div");
+    buttonWrap.className = "saveButtonWrap";
+    buttonWrap.appendChild(btn);
 
-      controlRow.appendChild(range);
-      controlRow.appendChild(valuePill);
-      wrap.appendChild(controlRow);
-      return wrap;
+    wrap.classList.add("fieldButton");
+    wrap.appendChild(buttonWrap);
+
+    return wrap;
   }
 
   if (field.type === "select") {
@@ -248,6 +242,16 @@ function loadWidgetDataIntoState(){
 
     const widgetdata = JSON.parse(raw);
 
+    console.log("DATA: ", widgetdata);
+
+    const savedName = localStorage.getItem(GAME_NAME_OVERRIDE_KEY);
+
+    state.appid = widgetdata.appid;
+
+    console.log("ID: ", state.appid);
+
+    state.gameName = savedName ?? widgetdata.gameName ?? "";
+
     const prevGameName = state.gameName || "";
     const nextGameName = widgetdata.gameName || "";
 
@@ -255,8 +259,8 @@ function loadWidgetDataIntoState(){
 
     state.gameName = nextGameName;
 
-    window.__achievementsFromWidget = Array.isArray(widgetdata.achievementsList)
-      ? widgetdata.achievementsList
+    window.__achievementsFromWidget = Array.isArray(widgetdata.blockedAch)
+      ? widgetdata.blockedAch
       : [];
 
     if (!window.__achievementsFromWidget.length) {
@@ -290,9 +294,11 @@ function pushTrackedConfigToWidget() {
     const isTracking = state.trackedMode ?? false;
 
     const list = window.__achievementsFromWidget;
+
     if (!Array.isArray(list) || !list.length) return;
 
     let selectedId = state.lockedAchievement;
+    console.log(selectedId);
     let selectedAchievement = list.find(a => a.id === selectedId);
 
     if (!selectedAchievement) {
@@ -301,24 +307,64 @@ function pushTrackedConfigToWidget() {
     }
 
     const trackedConfig = {
-      enabled: isTracking,
-      achievementId: selectedAchievement.id,
-      name: selectedAchievement.name,
-      description: selectedAchievement.description,
-      image: selectedAchievement.icon || selectedAchievement.image,
-      gameName: state.gameName,
-      updatedAt: Date.now()
+        enabled: isTracking,
+        achievementId: selectedAchievement.id,
+        name: selectedAchievement.name,
+        description: selectedAchievement.description,
+        image: selectedAchievement.icon || selectedAchievement.image,
+        gameName: state.gameName,
+        updatedAt: Date.now()
     };
 
     localStorage.setItem(TRACKED_CONFIG_KEY, JSON.stringify(trackedConfig));
+}
+
+function saveGameName() {
+
+    const appid = state.appid;
+
+    if (!appid) {
+        console.warn("No appid");
+        return;
+    }
+
+    let overrides = {};
+
+    try {
+
+        const raw = localStorage.getItem(GAME_NAME_OVERRIDE_KEY);
+
+        
+
+        if (raw) {
+          console.log(
+            localStorage.getItem(
+                GAME_NAME_OVERRIDE_KEY
+            )
+        );
+            const parsed = JSON.parse(raw);
+            if (parsed &&typeof parsed === "object") {
+                overrides = parsed;
+            }
+        }
+
+    } catch (e) {
+
+        console.warn("Old format detected. Resetting overrides.");
+        overrides = {};
+    }
+
+    overrides[appid] = state.gameName;
+
+    localStorage.setItem( GAME_NAME_OVERRIDE_KEY, JSON.stringify(overrides));
+
+    console.log( "Saved:", appid, state.gameName);
 }
 
 let schema = null;
 let state = {};
 
 document.addEventListener("DOMContentLoaded", init);
-
-
 
 window.addEventListener("storage", (e) => {
   if(e.key !== DOCK_DATA_KEY) return;

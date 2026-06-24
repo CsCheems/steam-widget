@@ -24,6 +24,12 @@
           "placeholder": ""
         },
         {
+          "type": "button",
+          "id": "saveBtn",
+          "param": "",
+          "default": ""
+        },
+        {
             "type": "select",
             "id": "lockedAchievement",
             "label": "Achievement to Track",

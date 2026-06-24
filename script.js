@@ -61,6 +61,7 @@ let isReload = true;
 
 const DOCK_DATA_KEY = "steam_widget_dock_data";
 const TRACKED_CONFIG_KEY = "steam_widget_tracked_config";
+const GAME_NAME_OVERRIDE_KEY = "steam_widget_game_name_override";
 
 const baseUrl = "https://steam-backend-tw9u.onrender.com";
 const mockUrl = "http://localhost:3000"
@@ -175,7 +176,7 @@ async function updateWidget() {
 
 		try {
 			const res = await fetch(
-				`${baseUrl}/api/steam/achievements?steamid=${steamid}&steamkey=${steamkey}&numeroLogros=${numeroLogros}&language=${language}`
+				`${mockUrl}/api/steam/achievements?steamid=${steamid}&steamkey=${steamkey}&numeroLogros=${numeroLogros}&language=${language}`
 			);
 
 			data = await res.json();
@@ -194,9 +195,13 @@ async function updateWidget() {
 			unlockedAch: 	data?.progress?.desbloqueado,
 			percentageAch: 	data?.progress?.percentage,
 			totalAch: 		data?.progress?.total,
+			blockedAch: 	data?.blockedAchievementsData,
+			blockedAchCount: data?.blockedAchievementsCount,
 			numeroLogros,
 			updatedAt: 		Date.now()
 		};
+
+		console.log("DATA: ", theWholeDamnData);
 
 		const currentRaw =
 			localStorage.getItem(
@@ -305,13 +310,19 @@ async function updateWidget() {
 		GAME NAME
 		========================= */
 
-		if (theWholeDamnData.gameName !== state.gameName) {
-			state.gameName =theWholeDamnData.gameName;
+		/* =========================
+		GAME NAME
+		========================= */
 
-			document.getElementById("gameName").textContent = state.gameName;
+		const displayGameName =getDisplayGameName(theWholeDamnData.appid, theWholeDamnData.gameName);
+
+		if (displayGameName !== state.gameName) {
+			state.gameName = displayGameName;
+
+			document.getElementById("gameName").textContent = displayGameName;
 
 			if (allowSb) {
-				cambiarCategoria(state.gameName);
+				cambiarCategoria(displayGameName);
 			}
 		}
 
@@ -745,6 +756,22 @@ function obtenerBoolean(param, valor) {
   if (valorParam === "true") return true;
   if (valorParam === "false") return false;
   return valor;
+}
+
+function getDisplayGameName(appid, steamGameName) {
+    try{
+
+        const overrides = JSON.parse(localStorage.getItem(GAME_NAME_OVERRIDE_KEY) || "{}");
+
+        return (
+            overrides[String(appid)] ||
+            steamGameName
+        );
+
+    }catch{
+
+        return steamGameName;
+    }
 }
 
 /* =========================
