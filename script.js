@@ -176,7 +176,7 @@ async function updateWidget() {
 
 		try {
 			const res = await fetch(
-				`${mockUrl}/api/steam/achievements?steamid=${steamid}&steamkey=${steamkey}&numeroLogros=${numeroLogros}&language=${language}`
+				`${baseUrl}/api/steam/achievements?steamid=${steamid}&steamkey=${steamkey}&numeroLogros=${numeroLogros}&language=${language}`
 			);
 
 			data = await res.json();
