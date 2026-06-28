@@ -24,6 +24,22 @@
           "placeholder": ""
         },
         {
+          "type": "switch",
+          "id": "autoColor",
+          "label": "Auto Color",
+          "param": "autoColor",
+          "default": true
+        },
+        {
+          "type": "color",
+          "id": "widgetColor",
+          "label": "Widget Color",
+          "param": "widgetColor",
+          "default": "#ffffff",
+          "variant": "swatch",
+          "showWhen": { "field": "autoColor", "is": false }
+        },
+        {
           "type": "button",
           "id": "saveBtn",
           "param": "",
