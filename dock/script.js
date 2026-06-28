@@ -2,6 +2,7 @@
 const DOCK_DATA_KEY = "steam_widget_dock_data";
 const TRACKED_CONFIG_KEY = "steam_widget_tracked_config";
 const GAME_NAME_OVERRIDE_KEY = "steam_widget_game_name_override";
+const CUSTOM_WIDGET_COLOR_OVERRIDE = "steam_widget_color_override";
 
 window.uiReady = new Promise((resolve) => {
   window.__resolveUIReady = resolve;
@@ -77,11 +78,26 @@ function renderSections() {
     card.appendChild(body);
     els.sectionsMount.appendChild(card);
   }
+
+  applyConditionalVisibility();
+}
+
+function applyConditionalVisibility() {
+  for (const section of schema.sections) {
+    for (const field of section.fields) {
+      if (!field.showWhen) continue;
+      const wrap = els.sectionsMount.querySelector(`[data-field-id="${field.id}"]`);
+      if (!wrap) continue;
+      const visible = state[field.showWhen.field] === field.showWhen.is;
+      wrap.style.display = visible ? "" : "none";
+    }
+  }
 }
 
 function renderField(field) {
   const wrap = document.createElement("div");
   wrap.className = "field";
+  wrap.dataset.fieldId = field.id;
 
   const label = document.createElement("div");
   label.className = "fieldLabel";
@@ -121,6 +137,8 @@ function renderField(field) {
     input.addEventListener("change", () => {
       state[field.id] = input.checked;
       txt.textContent = input.checked ? "Enabled" : "Disabled";
+      applyConditionalVisibility();
+      saveColor();
       pushTrackedConfigToWidget();
     });
 
@@ -132,7 +150,7 @@ function renderField(field) {
   if (field.type === "button") {
     const btn = document.createElement("button");
     btn.id = "saveBtnId";
-    btn.textContent = "Update Name";
+    btn.textContent = "Save";
     btn.className = "saveBtn";
 
     btn.addEventListener("click", saveGameName);
@@ -143,6 +161,36 @@ function renderField(field) {
 
     wrap.classList.add("fieldButton");
     wrap.appendChild(buttonWrap);
+
+    return wrap;
+  }
+
+  // COLOR
+  if (field.type === "color" && field.variant === "swatch") {
+    const wrapper = document.createElement("div");
+    wrapper.className = "colorPicker";
+
+    const swatch = document.createElement("button");
+    swatch.type = "button";
+    swatch.className = "colorSwatch";
+    swatch.style.setProperty("--swatch-color", state[field.id]);
+
+    const input = document.createElement("input");
+    input.type = "color";
+    input.value = state[field.id];
+    input.className = "colorInput";
+
+    input.addEventListener("input", () => {
+      state[field.id] = input.value;
+      swatch.style.setProperty("--swatch-color", input.value);
+      saveColor();
+    });
+
+    swatch.addEventListener("click", () => input.click());
+
+    wrapper.appendChild(swatch);
+    wrapper.appendChild(input);
+    wrap.appendChild(wrapper);
 
     return wrap;
   }
@@ -230,6 +278,7 @@ async function init() {
   
   setDefaultState();
   loadWidgetDataIntoState();
+  loadColorOverride();
   renderSections();
   pushTrackedConfigToWidget();
 
@@ -238,6 +287,9 @@ async function init() {
 function loadWidgetDataIntoState(){
   try{
     const raw = localStorage.getItem(DOCK_DATA_KEY);
+	
+
+
     if(!raw) return;
 
     const widgetdata = JSON.parse(raw);
@@ -334,8 +386,6 @@ function saveGameName() {
 
         const raw = localStorage.getItem(GAME_NAME_OVERRIDE_KEY);
 
-        
-
         if (raw) {
           console.log(
             localStorage.getItem(
@@ -359,6 +409,27 @@ function saveGameName() {
     localStorage.setItem( GAME_NAME_OVERRIDE_KEY, JSON.stringify(overrides));
 
     console.log( "Saved:", appid, state.gameName);
+}
+
+function saveColor() {
+    const payload = {
+        autoColor: !!state.autoColor,
+        color: state.widgetColor || "#ffffff"
+    };
+    localStorage.setItem(CUSTOM_WIDGET_COLOR_OVERRIDE, JSON.stringify(payload));
+}
+
+function loadColorOverride() {
+    try {
+        const raw = localStorage.getItem(CUSTOM_WIDGET_COLOR_OVERRIDE);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== "object") return;
+        if (parsed.color) state.widgetColor = parsed.color;
+        if (parsed.autoColor !== undefined) state.autoColor = !!parsed.autoColor;
+    } catch (e) {
+        console.warn("Failed to load color override:", e);
+    }
 }
 
 let schema = null;
