@@ -70,13 +70,16 @@ const mockUrl = "http://localhost:3000"
    GLOBAL STATE
 ========================= */
 
+const CUSTOM_WIDGET_COLOR_OVERRIDE = "steam_widget_color_override";
+
 const state = {
     active: null,
     appid: null,
     gameName: "",
     gameImage: "",
     progressPct: null,
-    lastAchievementsIds: []
+    lastAchievementsIds: [],
+    lastAutoColor: null
   };
 
 
@@ -266,7 +269,10 @@ async function updateWidget() {
 			card.style.setProperty("--card-bg-image", `url("${state.gameImage}")`);
 
 			extractAccentColor(state.gameImage)
-				.then(applyColorTheme);
+				.then(rgb => {
+					state.lastAutoColor = rgb;
+					applyColorOrOverride(rgb);
+				});
 		}
 
 		/* =========================
@@ -378,10 +384,13 @@ window.addEventListener("resize", resize);
 window.onload = resize;
 
 window.addEventListener("storage", (e) => {
-  console.log("E", e);
-  if (e.key !== TRACKED_CONFIG_KEY) return;
-
-  updateOverlayState();
+  if (e.key === TRACKED_CONFIG_KEY) {
+    updateOverlayState();
+    return;
+  }
+  if (e.key === CUSTOM_WIDGET_COLOR_OVERRIDE) {
+    applyColorOrOverride(state.lastAutoColor);
+  }
 });
 
 /* =========================
@@ -599,6 +608,28 @@ async function extractAccentColor(imageUrl) {
 	});
 }
 
+function hexToRgb(hex) {
+	const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+	return m ? { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) } : null;
+}
+
+function applyColorOrOverride(autoRgb) {
+	try {
+		const raw = localStorage.getItem(CUSTOM_WIDGET_COLOR_OVERRIDE);
+		if (raw) {
+			const override = JSON.parse(raw);
+			if (override && override.autoColor === false && override.color) {
+				const rgb = hexToRgb(override.color);
+				if (rgb) {
+					applyColorTheme(rgb);
+					return;
+				}
+			}
+		}
+	} catch (e) {}
+	if (autoRgb) applyColorTheme(autoRgb);
+}
+
 function darkenColor({ r, g, b }, factor = 0.25) {
 	return {
 		r: Math.round(r * factor),
@@ -703,12 +734,13 @@ function useApiDataFallback(data){
 ========================= */
 
 async function cambiarCategoria(game) {
-  let juego = limpiarNombreJuego(game);
-  try {
-    await client.doAction({ name: "Cambiar Categoria" }, { game: juego });
-  } catch (err) {
-    console.error("Error Streamerbot:", err);
-  }
+	console.log("STREAMERBOT: ", game);
+	let juego = limpiarNombreJuego(game);
+	try {
+		await client.doAction({ name: "Cambiar Categoria" }, { game: juego });
+	} catch (err) {
+		console.error("Error Streamerbot:", err);
+	}
 }
 
 function limpiarNombreJuego(nombre) {
@@ -735,15 +767,10 @@ async function enviarAppIdSteam(appid, isReload) {
 			}
 		);
 
-		console.debug(
-			"[STEAM] AppID enviado a Streamer.bot:",
-			appid
-		);
+		console.debug("[STEAM] AppID enviado a Streamer.bot:", appid);
+		
 	} catch (err) {
-			console.error(
-			"Error enviando AppID a Streamer.bot:",
-			err
-		);
+			console.error("Error enviando AppID a Streamer.bot:", err);
 	}
 }
 
